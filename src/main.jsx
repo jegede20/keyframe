@@ -69,6 +69,13 @@ function registerServiceWorker() {
 
 registerServiceWorker();
 
+/* ── Dev-only console test harness (Step 33) — stripped from production ── */
+if (import.meta.env.DEV) {
+  import('./dev/consoleTests.js')
+    .then((mod) => mod.install())
+    .catch((err) => console.warn('[Keyframe] Dev harness unavailable:', err));
+}
+
 /* ── Mount ─────────────────────────────────────────────────────────────── */
 const container = document.getElementById('root');
 ReactDOM.createRoot(container).render(
