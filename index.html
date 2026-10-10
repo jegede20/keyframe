@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+  <!-- Primary -->
+  <title>Keyframe — Demo Script Generator</title>
+  <meta name="description" content="Turn any app into a ready-to-shoot demo script. Paste a link, list features, get a shot-by-shot script with timing, narration, and a video AI prompt. Free, no sign-up." />
+
+  <!-- PWA -->
+  <meta name="theme-color" content="#6C5CE7" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Keyframe" />
+  <link rel="apple-touch-icon" href="/icons/icon-152x152.png" />
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-96x96.png" />
+
+  <!-- Open Graph -->
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Keyframe — Demo Script Generator" />
+  <meta property="og:description" content="Turn any app into a ready-to-shoot demo script in seconds. Free, no sign-up." />
+  <meta property="og:image" content="/og-image.png" />
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Keyframe — Demo Script Generator" />
+  <meta name="twitter:description" content="Turn any app into a ready-to-shoot demo script. Free, no sign-up." />
+  <meta name="twitter:image" content="/og-image.png" />
+
+  <!-- Font preconnect + load -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <!-- FOUC prevention — runs before React mounts -->
+  <script>
+    (function() {
+      const stored = localStorage.getItem('kf_settings');
+      let theme = 'dark';
+      if (stored) {
+        try {
+          const s = JSON.parse(stored);
+          if (s.theme === 'light') theme = 'light';
+          else if (s.theme === 'system') {
+            theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          }
+        } catch(e) {}
+      }
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+</html>

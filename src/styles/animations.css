@@ -1,0 +1,329 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   ANIMATIONS — Section 2.5
+   Every animation lives inside @media (prefers-reduced-motion: no-preference)
+   so that `reduce` disables ALL motion. Rule 8 — never violate.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Base: define animated classes as no-ops first so reduced motion is final state */
+.kf-anim-hero,
+.kf-anim-glow,
+.kf-anim-fade,
+.kf-anim-slide-right,
+.kf-anim-toast-in,
+.kf-anim-toast-out,
+.kf-anim-modal,
+.kf-anim-step,
+.kf-anim-tab,
+.kf-anim-accordion,
+.kf-anim-collapse,
+.kf-anim-spin,
+.kf-anim-drawer,
+.kf-press,
+.kf-hover-lift {
+  animation: none;
+}
+
+.kf-anim-accordion {
+  transition: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  /* ── 100. Hero headline: fade-in + upward slide, 600ms ease-out ───────── */
+  @keyframes kfHeroIn {
+    from {
+      opacity: 0;
+      transform: translateY(26px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .kf-anim-hero {
+    animation: kfHeroIn 600ms ease-out both;
+  }
+  .kf-anim-hero-1 {
+    animation-delay: 60ms;
+  }
+  .kf-anim-hero-2 {
+    animation-delay: 140ms;
+  }
+  .kf-anim-hero-3 {
+    animation-delay: 220ms;
+  }
+  .kf-anim-hero-4 {
+    animation-delay: 300ms;
+  }
+
+  /* ── 104. Generate button: soft glow pulse, infinite, 3s cycle ────────── */
+  @keyframes kfGlowPulse {
+    0%,
+    100% {
+      box-shadow: 0 0 24px var(--accent-primary-glow);
+    }
+    50% {
+      box-shadow: 0 0 42px var(--accent-primary-glow),
+        0 0 60px rgba(108, 92, 231, 0.1);
+    }
+  }
+  .kf-anim-glow {
+    animation: kfGlowPulse 3s ease-in-out infinite;
+  }
+
+  /* ── Generic fade ────────────────────────────────────────────────────── */
+  @keyframes kfFade {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  .kf-anim-fade {
+    animation: kfFade 200ms ease both;
+  }
+
+  /* ── 107. Tab content crossfade: 150ms ease ──────────────────────────── */
+  @keyframes kfTabFade {
+    from {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .kf-anim-tab {
+    animation: kfTabFade 150ms ease both;
+  }
+
+  /* ── 106. Loading stepper step transitions: 200ms ────────────────────── */
+  @keyframes kfStepIn {
+    from {
+      opacity: 0.35;
+      transform: translateX(-6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .kf-anim-step {
+    animation: kfStepIn 200ms ease both;
+  }
+
+  /* ── 108. FAQ accordion: height auto-animate, 200ms ease ─────────────── */
+  .kf-anim-accordion {
+    overflow: hidden;
+    transition: max-height 200ms ease, opacity 200ms ease;
+  }
+
+  /* ── 105. Input collapse → results expand: 300ms ease-out ────────────── */
+  @keyframes kfCollapseIn {
+    from {
+      opacity: 0;
+      transform: translateY(-8px) scale(0.995);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes kfExpandIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .kf-anim-collapse {
+    animation: kfCollapseIn 300ms ease-out both;
+  }
+  .kf-anim-expand {
+    animation: kfExpandIn 300ms ease-out both;
+  }
+
+  /* ── 109. History drawer: slide-in from right, 250ms ease-out ────────── */
+  @keyframes kfSlideInRight {
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: none;
+    }
+  }
+  @keyframes kfSlideInLeft {
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: none;
+    }
+  }
+  @keyframes kfSlideInUp {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: none;
+    }
+  }
+  .kf-anim-slide-right {
+    animation: kfSlideInRight 250ms ease-out both;
+  }
+  .kf-anim-slide-left {
+    animation: kfSlideInLeft 250ms ease-out both;
+  }
+  .kf-anim-slide-up {
+    animation: kfSlideInUp 250ms ease-out both;
+  }
+  .kf-anim-drawer {
+    animation: kfSlideInRight 250ms ease-out both;
+  }
+
+  /* ── 110. Settings modal: scale 0.95 → 1.0 + fade, 200ms ─────────────── */
+  @keyframes kfModalIn {
+    from {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .kf-anim-modal {
+    animation: kfModalIn 200ms ease-out both;
+  }
+
+  /* ── 111. Toast slide-in / slide-out ─────────────────────────────────── */
+  @keyframes kfToastIn {
+    from {
+      opacity: 0;
+      transform: translateX(120%);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes kfToastOut {
+    from {
+      opacity: 1;
+      transform: none;
+    }
+    to {
+      opacity: 0;
+      transform: translateX(120%);
+    }
+  }
+  .kf-anim-toast-in {
+    animation: kfToastIn 250ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .kf-anim-toast-out {
+    animation: kfToastOut 220ms ease-in both;
+  }
+
+  /* ── Spinner (loading steps, buttons) ────────────────────────────────── */
+  @keyframes kfSpin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  .kf-anim-spin {
+    animation: kfSpin 900ms linear infinite;
+  }
+
+  /* ── 113. Card hover lift ────────────────────────────────────────────── */
+  .kf-hover-lift {
+    transition: transform 180ms ease, border-color 180ms ease,
+      background-color 180ms ease, box-shadow 180ms ease;
+  }
+  .kf-hover-lift:hover {
+    transform: translateY(-2px);
+  }
+
+  /* ── Press feedback ──────────────────────────────────────────────────── */
+  .kf-press {
+    transition: transform 50ms ease;
+  }
+  .kf-press:active {
+    transform: scale(0.98);
+  }
+
+  /* ── Trust bar / bento scroll pulse ──────────────────────────────────── */
+  @keyframes kfPulseOnce {
+    0% {
+      opacity: 0.4;
+      transform: scale(0.94);
+    }
+    60% {
+      opacity: 1;
+      transform: scale(1.06);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+  .kf-anim-pulse-once {
+    animation: kfPulseOnce 620ms ease-out both;
+  }
+
+  /* ── Pull-to-refresh indicator ───────────────────────────────────────── */
+  @keyframes kfPullSpin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  .kf-anim-pull-spin {
+    animation: kfPullSpin 700ms linear infinite;
+  }
+
+  /* ── Toast progress bar ─────────────────────────────────────────────── */
+  @keyframes kfToastProgress {
+    from {
+      transform: scaleX(1);
+    }
+    to {
+      transform: scaleX(0);
+    }
+  }
+  .kf-anim-toast-progress {
+    animation: kfToastProgress linear both;
+    transform-origin: left center;
+  }
+
+  /* ── Offline → online flash ──────────────────────────────────────────── */
+  @keyframes kfFlash {
+    0% {
+      box-shadow: 0 0 0 0 rgba(0, 229, 160, 0.45);
+    }
+    100% {
+      box-shadow: 0 0 0 18px rgba(0, 229, 160, 0);
+    }
+  }
+  .kf-anim-flash {
+    animation: kfFlash 700ms ease-out both;
+  }
+
+  /* ── Paste pulse on URL field ───────────────────────────────────────── */
+  @keyframes kfPastePulse {
+    0% {
+      box-shadow: 0 0 0 0 var(--accent-primary-glow);
+    }
+    50% {
+      box-shadow: 0 0 0 6px var(--accent-primary-glow);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+    }
+  }
+  .kf-anim-paste {
+    animation: kfPastePulse 520ms ease-out both;
+  }
+}

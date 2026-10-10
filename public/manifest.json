@@ -1,0 +1,58 @@
+{
+  "name": "Keyframe — Demo Script Generator",
+  "short_name": "Keyframe",
+  "description": "Turn any app into a ready-to-shoot demo script. Paste a link, list features, get a shot-by-shot script with timing, narration, and a video AI prompt.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#6C5CE7",
+  "background_color": "#0A0A0F",
+  "lang": "en-US",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    { "src": "/icons/icon-72x72.png", "sizes": "72x72", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-96x96.png", "sizes": "96x96", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-128x128.png", "sizes": "128x128", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-144x144.png", "sizes": "144x144", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-152x152.png", "sizes": "152x152", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-192x192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-384x384.png", "sizes": "384x384", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-maskable-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icons/icon-maskable-512x512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/desktop-input.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Keyframe input screen on desktop"
+    },
+    {
+      "src": "/screenshots/mobile-results.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Keyframe results on mobile"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "New Script",
+      "short_name": "New",
+      "description": "Generate a new demo script",
+      "url": "/?action=new",
+      "icons": [{ "src": "/icons/shortcut-new.png", "sizes": "96x96" }]
+    },
+    {
+      "name": "History",
+      "short_name": "History",
+      "description": "View saved scripts",
+      "url": "/?action=history",
+      "icons": [{ "src": "/icons/shortcut-history.png", "sizes": "96x96" }]
+    }
+  ],
+  "prefer_related_applications": false
+}
