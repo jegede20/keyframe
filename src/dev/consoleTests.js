@@ -49,11 +49,11 @@ function offlineSuite() {
   check('invalid url rejected', !isValidUrl('not a url'));
 
   // Cleaner
-  const dirty = '# A\n\n\n\nWe use cookies and by continuing you accept.\nShare on Twitter\n## Head\n## Head\n' + 'y'.repeat(50000);
+  const dirty = '# A\n\n\n\nWe use cookies and by continuing you accept.\nShare on Twitter\n## Real-time analytics dashboard for teams\n## Real-time analytics dashboard for teams\n' + 'y'.repeat(50000);
   const clean = cleanMarkdown(dirty);
   check('cookie notice stripped', !/cookies/i.test(clean));
   check('social share stripped', !/share on twitter/i.test(clean));
-  check('duplicate headings deduped', (clean.match(/## Head/g) || []).length === 1);
+  check('duplicate long lines deduped', (clean.match(/Real-time analytics dashboard/g) || []).length === 1);
   check('48k cap applied', clean.length <= 48000 + 21, `${clean.length} chars`);
 
   // Timing

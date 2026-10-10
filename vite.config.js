@@ -10,12 +10,22 @@ export default defineConfig({
       srcDir: 'public',
       filename: 'sw.js',
       manifest: false,
+      // SW registration is handled manually in src/main.jsx (Section 4.4).
+      injectRegister: null,
       injectManifest: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
       },
       devOptions: { enabled: false },
     }),
   ],
+  server: {
+    host: true,
+    allowedHosts: true,
+  },
+  preview: {
+    host: true,
+    allowedHosts: true,
+  },
   build: {
     rollupOptions: {
       output: {
