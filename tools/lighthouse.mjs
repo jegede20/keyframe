@@ -11,11 +11,34 @@
  */
 import { spawnSync } from 'node:child_process';
 import { readFileSync, existsSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 const URL = process.env.LH_URL || 'http://localhost:4173/';
 const PASSES = Number(process.env.LH_PASSES || 3);
+
+/* Lighthouse needs a Chrome binary. An explicit CHROME_PATH wins; otherwise
+   fall back to the sandbox's choreographer install (the same build the other
+   tools drive) and then to system paths, so `npm run lighthouse` just works. */
+const chromePath = [
+  process.env.CHROME_PATH,
+  join(homedir(), '.local/share/choreographer/deps/chrome-linux64/chrome'),
+  '/usr/bin/google-chrome',
+  '/usr/bin/chromium',
+  '/usr/bin/chromium-browser',
+].filter(Boolean).find((p) => existsSync(p));
+if (!chromePath) {
+  console.error('No Chrome found — set CHROME_PATH to a Chrome/Chromium binary.');
+  process.exit(2);
+}
+console.log(`Chrome: ${chromePath}`);
+
+/* This sandbox's Chrome ships without its shared libraries on the default
+   search path; tools/fetch-chrome-libs.sh unpacks them here. */
+const chromeLibs = join(homedir(), '.libs/chrome-deps/usr/lib/x86_64-linux-gnu');
+const libPath = existsSync(chromeLibs)
+  ? `${chromeLibs}:${process.env.LD_LIBRARY_PATH || ''}`.replace(/:$/, '')
+  : process.env.LD_LIBRARY_PATH;
 const median = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
 
 const runs = [];
@@ -27,7 +50,7 @@ for (let i = 1; i <= PASSES; i += 1) {
     ['lighthouse', URL, '--only-categories=performance,accessibility,best-practices,pwa',
      '--output=json', `--output-path=${out}`, '--quiet', '--max-wait-for-load=60000',
      '--chrome-flags=--headless=new --no-sandbox --disable-gpu --disable-dev-shm-usage'],
-    { stdio: 'inherit', shell: process.platform === 'win32' }
+    { stdio: 'inherit', shell: process.platform === 'win32', env: { ...process.env, CHROME_PATH: chromePath, ...(libPath ? { LD_LIBRARY_PATH: libPath } : {}) } }
   );
   if (!existsSync(out)) {
     console.error('Lighthouse produced no report — is the preview server running on', URL, '?');

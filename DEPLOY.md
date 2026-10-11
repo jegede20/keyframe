@@ -88,10 +88,10 @@ npm run build
 python3 tools/pwa-check.py            # 27 checks, serves dist/ itself
 
 # 2b. Lighthouse acceptance (PWA 100 / a11y ≥ 95 / LCP < 2.5s / CLS < 0.1)
-CHROME_PATH=… npm run lighthouse
+npm run lighthouse                    # finds Chrome itself; CHROME_PATH=… overrides
 
 # 3. pipeline (no browser needed)
-node tools/run-pipeline-test.mjs      # 86 checks
+node tools/run-pipeline-test.mjs      # 90 checks
 GROQ_API_KEY=gsk_… node tools/run-pipeline-test.mjs   # + live Groq checks
 
 # 4. the one live end-to-end suite (spends real quota — run before a release)

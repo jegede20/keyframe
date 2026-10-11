@@ -19,19 +19,8 @@ export default function InstallPrompt({ isIOSManual, onInstall, onDismiss, onToa
     <div
       role="region"
       aria-label="Install Keyframe"
-      className="kf-anim-fade"
+      className="kf-anim-fade kf-install-banner"
       style={{
-        // Floats over the page instead of sitting in the document flow: the
-        // banner only becomes available once the service worker is active
-        // (~2s in), and pushing the hero down at that point was the single
-        // source of the site's entire Layout Shift score.
-        position: 'fixed',
-        top: 76,
-        left: '50%',
-        transform: 'translateX(-50%)',
-        width: 'calc(100% - 32px)',
-        maxWidth: 720,
-        zIndex: 180,
         padding: '12px 14px',
         display: 'flex',
         alignItems: 'center',

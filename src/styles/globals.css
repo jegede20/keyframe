@@ -139,6 +139,25 @@ body {
     margin: 0 auto;
     position: relative;
   }
+  /* Install banner — floats (so it never pushes the hero down, which was the
+     whole Layout Shift score) but anchored under the toast band rather than
+     over the headline: same 76px offset as .kf-toast-container, which clears
+     the 64px mobile action bar by 12px. Toasts (z 400) sit above it (z 180). */
+  .kf-install-banner {
+    position: fixed;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    width: calc(100% - 32px);
+    max-width: 720px;
+    z-index: 180;
+  }
+  @media (min-width: 768px) {
+    /* the mobile action bar is hidden from 768px up, so the banner drops */
+    .kf-install-banner {
+      bottom: 24px;
+    }
+  }
   .kf-footer-inner {
     display: flex;
     gap: 10px;
