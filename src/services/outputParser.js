@@ -3,7 +3,7 @@
    Parse → validate → repair. Never crash on a malformed model response.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-import { PARSE_ERROR } from './errorClassifier.js';
+import { PARSE_ERROR, incompleteOutput } from './errorClassifier.js';
 import { repairTimings, secondsToTimestamp } from '../utils/timing.js';
 import { countWords } from '../utils/wordCount.js';
 
@@ -133,7 +133,7 @@ export function parseAndValidateOutput(rawContent) {
   /* Step 2 — required top-level keys */
   for (const key of REQUIRED_KEYS) {
     if (!(key in parsed)) {
-      throw new Error(`AI output missing required section: "${key}"`);
+      throw Object.assign(new Error(`AI output missing required section: "${key}"`), incompleteOutput(key));
     }
   }
 
@@ -143,7 +143,7 @@ export function parseAndValidateOutput(rawContent) {
 
   /* Step 3 — script must be a non-empty array */
   if (!Array.isArray(parsed.script) || parsed.script.length === 0) {
-    throw new Error('AI output missing required section: "script" (empty script)');
+    throw Object.assign(new Error('AI output missing required section: "script" (empty script)'), incompleteOutput('script'));
   }
 
   /* Step 4 — shot fields, with placeholders instead of crashes */

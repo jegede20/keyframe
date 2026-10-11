@@ -4,7 +4,7 @@
    anywhere else (Rule 4).
    ═══════════════════════════════════════════════════════════════════════════ */
 
-import { GroqError, OFFLINE } from './errorClassifier.js';
+import { GroqError, OFFLINE, TRUNCATED } from './errorClassifier.js';
 import { buildFullPrompt } from './promptBuilder.js';
 import { parseAndValidateOutput } from './outputParser.js';
 import { KF_KEYS, readLS } from '../store/storage.js';
@@ -24,44 +24,39 @@ export const GROQ_MODELS = [
 
 export const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
 
-/** Keeps a key out of logs/UI while still identifying which one was used. */
-export function maskKey(key) {
-  if (!key || key.length < 10) return '••••';
-  return `${key.slice(0, 6)}…${key.slice(-4)}`;
-}
-
 /**
- * resolveApiKey() → { key, source }
- * 1. the user's own key from localStorage  2. the bundled Vite env key
+ * resolveApiKey() → the key generation runs with.
+ *
+ * The key is bundled at build time from VITE_GROQ_API_KEY; people using the app
+ * never supply one. The earlier build let a key pasted into Settings win over
+ * this one — that path is retired, and the localStorage slot it used is
+ * deliberately not read, so a key left behind by an old build can never
+ * override the shipped key.
  */
 export function resolveApiKey() {
-  const userKey = String(readLS(KF_KEYS.groqKey, '') || '').trim();
-  if (userKey.startsWith('gsk_')) return { key: userKey, source: 'user' };
-
   const envKey = String(import.meta.env.VITE_GROQ_API_KEY || '').trim();
-  if (envKey.startsWith('gsk_')) return { key: envKey, source: 'built-in' };
+  if (envKey.startsWith('gsk_')) return envKey;
 
+  // A build without the env var is a deployment mistake — no UI can fix it.
   throw new GroqError(401, { error: 'no_api_key' });
-}
-
-export function hasUsableApiKey() {
-  try {
-    resolveApiKey();
-    return true;
-  } catch (err) {
-    return false;
-  }
 }
 
 /**
  * Groq's free tier allows 8,000 tokens per minute per model (RPM 1,000), and the
- * TPM check counts prompt + max_tokens together. With max_tokens 3000 and ~1.2k
- * tokens of instructions, the scraped page has to fit in roughly 3.5k tokens
- * (~14k characters). Both current models have 131k context windows, so TPM — not
- * context length — is the binding constraint. Headings survive the trim in full
- * (they drive screen names); only the body prose is shortened.
+ * TPM check counts prompt + max_tokens together, so the two budgets compete for
+ * one ceiling. A measured run on a real page: 17,905 prompt characters = 5,443
+ * tokens, of which ~1,190 were instructions; the completion used 2,988 tokens
+ * and 1,372 of those were reasoning tokens — leaving only ~1,600 tokens for a
+ * 90-second script, which is why responses occasionally stopped mid-JSON.
+ *
+ * So the page body gets 9,000 characters (instructions ~3.9k characters ≈ 1.2k
+ * tokens, ≈ 3,900 tokens total) and the completion gets 3,600, keeping the pair
+ * near 7,500 of the 8,000 ceiling with room for pages that tokenise denser.
+ * Both models have 131k context windows, so TPM — not context length — is the
+ * binding constraint. Headings survive the trim in full (they drive screen
+ * names); only the body prose is shortened.
  */
-const PROMPT_CHAR_BUDGET = 14000;
+const PROMPT_CHAR_BUDGET = 9000;
 
 function trimForModel(jinaResult, model) {
   const windowChars = Math.floor(model.contextWindow * 3); // 4 chars/token, 25% headroom
@@ -107,7 +102,7 @@ export async function generateScript(appUrl, userInputs, jinaResult, apiKey, mod
         model: model.id,
         messages,
         temperature: 0.4,
-        max_tokens: 3000, // keeps prompt + completion inside the 8k TPM budget
+        max_tokens: 3600, // ~1.4k of this pays for reasoning; see PROMPT_CHAR_BUDGET
         response_format: { type: 'json_object' },
         ...(model.reasoningEffort ? { reasoning_effort: model.reasoningEffort } : {}),
         stream: false,
@@ -131,7 +126,16 @@ export async function generateScript(appUrl, userInputs, jinaResult, apiKey, mod
   }
 
   const data = await response.json();
-  const rawContent = data?.choices?.[0]?.message?.content;
+
+  /* A response that hit the ceiling stops mid-JSON. The parser can only see a
+     truncated object and would report a missing section, so name the real
+     cause here — and do not fall through to the other model: this is not a
+     quota problem, and a silent retry would double the token spend. */
+  const choice = data?.choices?.[0];
+  if (choice?.finish_reason === 'length') {
+    throw Object.assign(new Error('Groq response hit the max_tokens ceiling mid-JSON'), TRUNCATED);
+  }
+  const rawContent = choice?.message?.content;
   const output = parseAndValidateOutput(rawContent);
   const generationMs = Math.round(performance.now() - started);
 
@@ -174,49 +178,4 @@ export async function generateWithFallback(appUrl, userInputs, jinaResult, apiKe
   }
 
   throw lastError || new GroqError(500, null);
-}
-
-/**
- * validateApiKey(key) — lightweight key probe kept for the dev harness and
- * tests (the Settings key field has been removed now that the app ships with
- * its own bundled key). Sends a 1-token request; returns { valid, error }.
- */
-export async function validateApiKey(key) {
-  const value = String(key || '').trim();
-  if (!value.startsWith('gsk_')) {
-    return { valid: false, error: 'A Groq key starts with "gsk_".' };
-  }
-
-  try {
-    const response = await fetch(GROQ_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${value}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: GROQ_MODELS[0].id,
-        messages: [{ role: 'user', content: 'Reply with the single word: ok' }],
-        max_tokens: 3,
-        temperature: 0,
-        stream: false,
-      }),
-    });
-
-    if (response.ok) return { valid: true }; 
-    let body = null;
-    try {
-      body = await response.json();
-    } catch (err) {
-      body = null;
-    }
-    const classified = new GroqError(response.status, body);
-    return { valid: false, error: classified.userMsg, type: classified.type };
-  } catch (err) {
-    return {
-      valid: false,
-      error: 'Could not reach Groq to validate the key. Check your connection.',
-      type: 'OFFLINE',
-    };
-  }
 }

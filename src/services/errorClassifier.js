@@ -58,12 +58,14 @@ export function classifyGroqStatus(status, body) {
         action: 'EDIT_INPUTS',
       };
     case 413:
+      /* Seen in the wild as a spurious edge rejection of a ~18 KB body — the
+         page content is trimmed client-side, so size is not the real cause. */
       return {
         type: 'TOO_LARGE',
-        title: 'Context too large',
-        userMsg: 'The app page was too big to send whole. Try a shorter landing page.',
-        suggestion: 'A marketing or pricing page usually reads cleaner than a docs site.',
-        action: 'EDIT_INPUTS',
+        title: 'The API rejected that request',
+        userMsg: "Groq's edge refused the request before it reached the model.",
+        suggestion: 'This is usually momentary — press Try Again. If it repeats, try a shorter landing page.',
+        action: 'RETRY',
       };
     default:
       return {
@@ -109,6 +111,28 @@ export const PARSE_ERROR = {
   suggestion: 'Regenerating usually fixes this — the model occasionally returns malformed JSON.',
   action: 'RETRY',
 };
+
+/* The completion stopped at the token ceiling: reasoning tokens count against
+   max_tokens, so a long script can run out of room mid-JSON. */
+export const TRUNCATED = {
+  type: 'TRUNCATED',
+  title: 'The script was cut short',
+  userMsg: 'The AI ran out of room before it finished writing the script.',
+  suggestion: 'Press Try Again — a second pass almost always comes back complete.',
+  action: 'RETRY',
+};
+
+/* Valid JSON, but the model skipped a section outright — in practice it is
+   always videoPrompt, the last and longest one, when it is running long. */
+export function incompleteOutput(section) {
+  return {
+    type: 'INCOMPLETE_OUTPUT',
+    title: 'The script came back incomplete',
+    userMsg: `The AI left out the "${section}" part of the script.`,
+    suggestion: 'Press Try Again — it usually writes the whole thing on a second pass.',
+    action: 'RETRY',
+  };
+}
 
 export const ABORT_ERROR = {
   type: 'ABORTED',

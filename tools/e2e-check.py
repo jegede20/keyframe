@@ -547,6 +547,103 @@ async def main():
           return true;
         })()""")
 
+        # ── 11. Responses that stop early ────────────────────────────────
+        # Reasoning tokens count against max_tokens, so a long script can hit
+        # the ceiling mid-JSON. That has to read as "cut short" — with the
+        # inputs intact — and must not silently spend a second model.
+        print("\n11. Cut-short and incomplete responses")
+
+        def broken_stub(mode):
+            if mode == "truncated":
+                content = '{"meta": {"appName": "Acme", "totalSeconds": 60}, "script": [{"shotNumber": 1, "screen": "Home"'
+                finish = "length"
+            else:
+                content = json.dumps({
+                    "meta": {"appName": "Acme", "totalSeconds": 60, "shotCount": 1, "estimatedWordCount": 10, "tone": "professional"},
+                    "script": [{"shotNumber": 1, "label": "OPENING", "screen": "Home", "timeStart": "0:00", "timeEnd": "1:00", "durationSeconds": 60, "action": "Open the dashboard.", "narration": "Acme gives your team one place to see everything."}],
+                    "cutList": [{"screenName": "Mobile app", "reason": "The desktop flow reads better on video."}],
+                })
+                finish = "stop"
+            return """
+              (() => {
+                const realFetch = window.fetch.bind(window);
+                window.__groqHits = [];
+                window.fetch = async (input, init) => {
+                  const url = typeof input === 'string' ? input : (input && input.url) || '';
+                  if (url.startsWith('https://r.jina.ai/')) {
+                    const md = ['# Acme Boards — project tracking', '', '## Home dashboard',
+                      'Live tiles for every project, updated in real time for the whole team to see.'].join('\\n');
+                    return new Response(md, { status: 200, headers: { 'Content-Type': 'text/markdown' } });
+                  }
+                  if (url.startsWith('https://api.groq.com/')) {
+                    const body = JSON.parse(init.body);
+                    window.__groqHits.push(body.model);
+                    return new Response(JSON.stringify({
+                      id: 'mock', model: body.model,
+                      choices: [{ index: 0, message: { role: 'assistant', content: %CONTENT% }, finish_reason: '%FINISH%' }],
+                      usage: { prompt_tokens: 100, completion_tokens: 200 }
+                    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+                  }
+                  return realFetch(input, init);
+                };
+                return true;
+              })()
+            """.replace('%CONTENT%', json.dumps(content)).replace('%FINISH%', finish)
+
+        async def wait_for_text(needle, tries=24):
+            text = ""
+            for _ in range(tries):
+                await asyncio.sleep(0.5)
+                text = (await ev(tab, "document.body.innerText")) or ""
+                if needle in text:
+                    break
+            return text
+
+        async def generate_again():
+            await ev(tab, """(() => {
+              const ta = document.getElementById('kf-main-features');
+              Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set.call(ta, 'Live boards, exports');
+              ta.dispatchEvent(new Event('input', { bubbles: true }));
+              const form = [...document.querySelectorAll('form')].find(f => f.querySelector('#kf-main-features'));
+              form.querySelector('button[type=submit]').click();
+              return true;
+            })()""")
+
+        # 11a. The completion hit the token ceiling mid-JSON.
+        await tab.send_command("Page.navigate", {"url": URL})
+        await asyncio.sleep(2.5)
+        await ev(tab, fill_and_generate(broken_stub("truncated")))
+        await asyncio.sleep(1.0)
+        if await ev(tab, "!!document.getElementById('kf-main-features')"):
+            await generate_again()
+        trunc_txt = await wait_for_text("cut short")
+        check("cut-short response → named error card", "cut short" in trunc_txt)
+        check("cut-short card offers Try Again", "Try Again" in trunc_txt)
+        check(
+            "inputs preserved through a cut-short response",
+            (await ev(tab, "document.getElementById('kf-main-url')?.value")) == "https://acme.example"
+            and (await ev(tab, "document.getElementById('kf-main-features')?.value")) == "Live boards, exports",
+        )
+        # Clear the call log so exactly one attempt is measured: Try Again must
+        # issue one request to the primary model — not two, and not the fallback.
+        await ev(tab, "window.__groqHits = []")
+        await ev(tab, "[...document.querySelectorAll('button')].find(b => b.textContent.includes('Try Again')).click()")
+        await asyncio.sleep(3.0)
+        hits = await ev(tab, "JSON.stringify(window.__groqHits || [])")
+        check("Try Again re-issues after a cut-short response", (hits or "").count("openai/gpt-oss") == 1, hits)
+        check("cut-short spends one model call, not two", "gpt-oss-20b" not in (hits or ""), hits)
+
+        # 11b. Clean stop, but the model skipped a whole section.
+        await tab.send_command("Page.navigate", {"url": URL})
+        await asyncio.sleep(2.5)
+        await ev(tab, fill_and_generate(broken_stub("incomplete")))
+        await asyncio.sleep(1.0)
+        if await ev(tab, "!!document.getElementById('kf-main-features')"):
+            await generate_again()
+        inc_txt = await wait_for_text("incomplete")
+        check("incomplete response → incomplete-script card", "came back incomplete" in inc_txt)
+        check("incomplete card names the missing section", "videoPrompt" in inc_txt)
+
         print("\n" + "─" * 60)
         passed = sum(1 for _, ok, _ in results if ok)
         failed = [(n, d) for n, ok, d in results if not ok]

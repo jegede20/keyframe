@@ -16,8 +16,10 @@ __export(errorClassifier_exports, {
   JINA_EMPTY: () => JINA_EMPTY,
   OFFLINE: () => OFFLINE,
   PARSE_ERROR: () => PARSE_ERROR,
+  TRUNCATED: () => TRUNCATED,
   URL_ERROR: () => URL_ERROR,
   classifyGroqStatus: () => classifyGroqStatus,
+  incompleteOutput: () => incompleteOutput,
   jinaHttpError: () => jinaHttpError,
   normalizeError: () => normalizeError
 });
@@ -59,10 +61,10 @@ function classifyGroqStatus(status, body) {
     case 413:
       return {
         type: "TOO_LARGE",
-        title: "Context too large",
-        userMsg: "The app page was too big to send whole. Try a shorter landing page.",
-        suggestion: "A marketing or pricing page usually reads cleaner than a docs site.",
-        action: "EDIT_INPUTS"
+        title: "The API rejected that request",
+        userMsg: "Groq's edge refused the request before it reached the model.",
+        suggestion: "This is usually momentary \u2014 press Try Again. If it repeats, try a shorter landing page.",
+        action: "RETRY"
       };
     default:
       return {
@@ -73,6 +75,15 @@ function classifyGroqStatus(status, body) {
         action: "RETRY"
       };
   }
+}
+function incompleteOutput(section2) {
+  return {
+    type: "INCOMPLETE_OUTPUT",
+    title: "The script came back incomplete",
+    userMsg: `The AI left out the "${section2}" part of the script.`,
+    suggestion: "Press Try Again \u2014 it usually writes the whole thing on a second pass.",
+    action: "RETRY"
+  };
 }
 function normalizeError(error) {
   if (!error) {
@@ -128,7 +139,7 @@ function jinaHttpError(status) {
     status
   };
 }
-var GroqError, JINA_EMPTY, OFFLINE, URL_ERROR, PARSE_ERROR, ABORT_ERROR;
+var GroqError, JINA_EMPTY, OFFLINE, URL_ERROR, PARSE_ERROR, TRUNCATED, ABORT_ERROR;
 var init_errorClassifier = __esm({
   "src/services/errorClassifier.js"() {
     GroqError = class extends Error {
@@ -171,6 +182,13 @@ var init_errorClassifier = __esm({
       title: "Unreadable AI response",
       userMsg: "AI returned unparseable output. Please try again.",
       suggestion: "Regenerating usually fixes this \u2014 the model occasionally returns malformed JSON.",
+      action: "RETRY"
+    };
+    TRUNCATED = {
+      type: "TRUNCATED",
+      title: "The script was cut short",
+      userMsg: "The AI ran out of room before it finished writing the script.",
+      suggestion: "Press Try Again \u2014 a second pass almost always comes back complete.",
       action: "RETRY"
     };
     ABORT_ERROR = {
@@ -764,13 +782,13 @@ function parseAndValidateOutput(rawContent) {
   }
   for (const key of REQUIRED_KEYS) {
     if (!(key in parsed)) {
-      throw new Error(`AI output missing required section: "${key}"`);
+      throw Object.assign(new Error(`AI output missing required section: "${key}"`), incompleteOutput(key));
     }
   }
   if (!isPlainObject(parsed.meta)) parsed.meta = {};
   const meta = parsed.meta;
   if (!Array.isArray(parsed.script) || parsed.script.length === 0) {
-    throw new Error('AI output missing required section: "script" (empty script)');
+    throw Object.assign(new Error('AI output missing required section: "script" (empty script)'), incompleteOutput("script"));
   }
   const warnings = [];
   parsed.script = parsed.script.map((shot, index) => {
@@ -924,28 +942,8 @@ var init_outputParser = __esm({
 });
 
 // src/store/storage.js
-function readLS(key, fallback = null) {
-  try {
-    const raw = window.localStorage.getItem(key);
-    if (raw === null || raw === void 0) return fallback;
-    return raw;
-  } catch (err) {
-    console.warn(`[Keyframe] localStorage read failed for "${key}"`, err);
-    return fallback;
-  }
-}
-var KF_KEYS;
 var init_storage = __esm({
   "src/store/storage.js"() {
-    KF_KEYS = {
-      settings: "kf_settings",
-      groqKey: "kf_groq_key",
-      lastInputs: "kf_last_inputs",
-      historyIndex: "kf_history_index",
-      theme: "kf_theme",
-      installDismissed: "kf_install_dismissed",
-      onboardingDone: "kf_onboarding_done"
-    };
   }
 });
 
@@ -956,29 +954,12 @@ __export(groq_exports, {
   GROQ_MODELS: () => GROQ_MODELS,
   generateScript: () => generateScript,
   generateWithFallback: () => generateWithFallback,
-  hasUsableApiKey: () => hasUsableApiKey,
-  maskKey: () => maskKey,
-  resolveApiKey: () => resolveApiKey,
-  validateApiKey: () => validateApiKey
+  resolveApiKey: () => resolveApiKey
 });
-function maskKey(key) {
-  if (!key || key.length < 10) return "\u2022\u2022\u2022\u2022";
-  return `${key.slice(0, 6)}\u2026${key.slice(-4)}`;
-}
 function resolveApiKey() {
-  const userKey = String(readLS(KF_KEYS.groqKey, "") || "").trim();
-  if (userKey.startsWith("gsk_")) return { key: userKey, source: "user" };
   const envKey = String("").trim();
-  if (envKey.startsWith("gsk_")) return { key: envKey, source: "built-in" };
+  if (envKey.startsWith("gsk_")) return envKey;
   throw new GroqError(401, { error: "no_api_key" });
-}
-function hasUsableApiKey() {
-  try {
-    resolveApiKey();
-    return true;
-  } catch (err) {
-    return false;
-  }
 }
 function trimForModel(jinaResult2, model) {
   const windowChars = Math.floor(model.contextWindow * 3);
@@ -1015,8 +996,8 @@ async function generateScript(appUrl, userInputs, jinaResult2, apiKey, modelId, 
         model: model.id,
         messages,
         temperature: 0.4,
-        max_tokens: 3e3,
-        // keeps prompt + completion inside the 8k TPM budget
+        max_tokens: 3600,
+        // ~1.4k of this pays for reasoning; see PROMPT_CHAR_BUDGET
         response_format: { type: "json_object" },
         ...model.reasoningEffort ? { reasoning_effort: model.reasoningEffort } : {},
         stream: false
@@ -1038,7 +1019,11 @@ async function generateScript(appUrl, userInputs, jinaResult2, apiKey, modelId, 
     throw new GroqError(response.status, body);
   }
   const data = await response.json();
-  const rawContent = data?.choices?.[0]?.message?.content;
+  const choice = data?.choices?.[0];
+  if (choice?.finish_reason === "length") {
+    throw Object.assign(new Error("Groq response hit the max_tokens ceiling mid-JSON"), TRUNCATED);
+  }
+  const rawContent = choice?.message?.content;
   const output = parseAndValidateOutput(rawContent);
   const generationMs = Math.round(performance.now() - started);
   return {
@@ -1073,43 +1058,6 @@ async function generateWithFallback(appUrl, userInputs, jinaResult2, apiKey, opt
   }
   throw lastError || new GroqError(500, null);
 }
-async function validateApiKey(key) {
-  const value = String(key || "").trim();
-  if (!value.startsWith("gsk_")) {
-    return { valid: false, error: 'A Groq key starts with "gsk_".' };
-  }
-  try {
-    const response = await fetch(GROQ_ENDPOINT, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${value}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: GROQ_MODELS[0].id,
-        messages: [{ role: "user", content: "Reply with the single word: ok" }],
-        max_tokens: 3,
-        temperature: 0,
-        stream: false
-      })
-    });
-    if (response.ok) return { valid: true };
-    let body = null;
-    try {
-      body = await response.json();
-    } catch (err) {
-      body = null;
-    }
-    const classified = new GroqError(response.status, body);
-    return { valid: false, error: classified.userMsg, type: classified.type };
-  } catch (err) {
-    return {
-      valid: false,
-      error: "Could not reach Groq to validate the key. Check your connection.",
-      type: "OFFLINE"
-    };
-  }
-}
 var GROQ_MODELS, GROQ_ENDPOINT, PROMPT_CHAR_BUDGET;
 var init_groq = __esm({
   "src/services/groq.js"() {
@@ -1124,7 +1072,7 @@ var init_groq = __esm({
       // fallback on 429
     ];
     GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
-    PROMPT_CHAR_BUDGET = 14e3;
+    PROMPT_CHAR_BUDGET = 9e3;
   }
 });
 
@@ -1377,6 +1325,42 @@ try {
   threw = err;
 }
 check("missing section names the key", Boolean(threw) && /"script"/.test(threw.message), threw?.message);
+check("missing section is retryable and user-facing", threw?.type === "INCOMPLETE_OUTPUT" && threw?.action === "RETRY");
+section("8b. Truncated completion");
+var { generateScript: generateScript2 } = await Promise.resolve().then(() => (init_groq(), groq_exports));
+var stubJina = cleanMarkdown2(
+  "# Acme Boards\n\nProject tracking for small teams, with live tiles for every project.\n\n## Board view\n\nDrag cards between columns and every status change syncs instantly across devices."
+);
+var realFetch = globalThis.fetch;
+var fetchCalls = 0;
+globalThis.fetch = async () => {
+  fetchCalls += 1;
+  return new Response(
+    JSON.stringify({
+      id: "stub",
+      model: "openai/gpt-oss-120b",
+      choices: [{ index: 0, message: { role: "assistant", content: '{"meta": {"appName": "Acme"' }, finish_reason: "length" }],
+      usage: { prompt_tokens: 100, completion_tokens: 3600 }
+    }),
+    { status: 200, headers: { "Content-Type": "application/json" } }
+  );
+};
+var truncThrew = null;
+try {
+  await generateScript2(
+    "https://acme.example",
+    { features: "Live boards", length: 90, tone: "professional", videoTool: "any" },
+    stubJina,
+    "gsk_test_key_not_a_real_key_0",
+    "openai/gpt-oss-120b"
+  );
+} catch (err) {
+  truncThrew = err;
+}
+globalThis.fetch = realFetch;
+check("finish_reason length \u2192 named truncation error", truncThrew?.type === "TRUNCATED", truncThrew?.message);
+check("truncation is retryable", truncThrew?.action === "RETRY");
+check("truncation does not silently call the other model", fetchCalls === 1, `${fetchCalls} call(s)`);
 var offTimings = JSON.stringify({
   ...goodPayload,
   script: goodPayload.script.map((s) => ({ ...s, durationSeconds: 30 }))

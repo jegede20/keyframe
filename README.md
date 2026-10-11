@@ -67,11 +67,17 @@ variables) before building or every generation fails with the "key rejected"
 error card.
 
 **Free-tier budget.** TPM is 8,000 per model, and Groq counts prompt +
-`max_tokens` against it, so Keyframe trims the scraped page to ~14k characters
-(body prose only — headings, which become screen names, always survive) and asks
-for at most 3,000 completion tokens. That leaves room for roughly 8 generations
-per minute in total. A `429` on the 120b model retries on the 20b model
-automatically.
+`max_tokens` against it, so the two budgets compete for one ceiling. Measured on
+a real page: 17,905 prompt characters cost 5,443 tokens, and the completion's
+allowance paid for 1,372 *reasoning* tokens before a single word of script — the
+old 3,000-token cap left roughly 1,600 tokens for a 90-second script, and
+responses occasionally stopped mid-JSON as a result. Keyframe now trims the
+scraped page to ~9k characters (body prose only — headings, which become screen
+names, always survive) and asks for at most 3,600 completion tokens, keeping the
+pair near 7,500 of the 8,000 ceiling. A `429` on the 120b model retries on the
+20b model automatically; a response that stops at the ceiling (`finish_reason:
+"length"`) is reported as a cut-short error with a one-tap retry instead of
+being mistaken for a missing section.
 
 ## Dev console test harness (Step 33)
 
@@ -80,8 +86,8 @@ In dev mode only, `src/dev/consoleTests.js` installs `window.__keyframeTest`:
 ```js
 __keyframeTest.all()                       // offline suite + live Jina read
 __keyframeTest.jina('https://tailwindcss.com')
-__keyframeTest.groq('gsk_...', 90)         // live generation checks (needs a key)
-__keyframeTest.groq('gsk_...', 60, 'energetic')
+__keyframeTest.groq()                      // live generation, bundled key
+__keyframeTest.groq(60, 'energetic')       // 60-second script
 ```
 
 The Groq suite asserts: shot count inside the spec range, durations summing
@@ -119,7 +125,7 @@ Every browser suite accepts `KF_BASE`, so the same checks can be pointed at the 
 ```bash
 npm run build && npm run preview -- --port 4173 &
 KF_BASE=http://localhost:4173 python3 tools/browser-check.py   # 39/39 (7 dev-only skips)
-KF_BASE=http://localhost:4173 python3 tools/e2e-check.py       # 52/52
+KF_BASE=http://localhost:4173 python3 tools/e2e-check.py       # 59/59
 KF_BASE=http://localhost:4173 python3 tools/live-check.py      # 11/11, real APIs
 ```
 
@@ -134,9 +140,9 @@ Everything below runs without any paid service. Chrome is pulled by
 
 | Command | What it proves |
 | --- | --- |
-| `node tools/run-pipeline-test.mjs` | 86 checks: URL validation, all six cleaning passes, live Jina read, 4-layer prompt assembly, timing repair, 130 wpm math, parser repair paths, error classification. Add `GROQ_API_KEY=gsk_…` to run the live-generation checks. |
+| `node tools/run-pipeline-test.mjs` | 90 checks: URL validation, all six cleaning passes, live Jina read, 4-layer prompt assembly, timing repair, 130 wpm math, parser repair paths, error classification, and a stubbed `finish_reason: "length"` response that must surface as a retryable truncation without spending a second model. Add `GROQ_API_KEY=gsk_…` to run the live-generation checks. |
 | `python3 tools/browser-check.py` | 49 checks against the dev server (7 are skipped on the production build, where there is no source-module import or dev harness): landing render, FAQ accordion, output preview tabs, settings + theme persistence (FOUC script), history drawer, IndexedDB round-trip, URL validation, hero → workspace entry, error box with preserved inputs, mobile layout + 44px touch targets, hamburger drawer. |
-| `python3 tools/e2e-check.py` | 52 checks with **mocked Jina + Groq**: full generation, stepper, cancel (inputs preserved), 8 shot cards, timeline connectors, pace chips, all three tabs, real clipboard contents for Copy All / per-shot copy, New Script → auto-save → history → reload, "+ Add to Script" regeneration, reduced-motion, **both rate-limit paths** (primary 429 → second model + toast; both limited → error card with provider detail, inputs preserved, Try Again re-issues) and **generation while offline**. |
+| `python3 tools/e2e-check.py` | 59 checks with **mocked Jina + Groq**: full generation, stepper, cancel (inputs preserved), 8 shot cards, timeline connectors, pace chips, all three tabs, real clipboard contents for Copy All / per-shot copy, New Script → auto-save → history → reload, "+ Add to Script" regeneration, reduced-motion, **both rate-limit paths** (primary 429 → second model + toast; both limited → error card with provider detail, inputs preserved, Try Again re-issues), **generation while offline**, and **responses that stop early** (a cut-short response → named card, inputs preserved, one model call on retry; an incomplete one naming the missing section). |
 | `python3 tools/motion-audit.py` | **Rule 8, exhaustively.** Walks every element on landing / workspace / results / settings / history / toast in both motion states and asserts that with `prefers-reduced-motion: reduce` nothing has a running duration or delay — including the inline JSX `transition:` styles a stylesheet gate cannot reach — that reveals stay readable, and that motion-allowed users still get their animations. |
 | `python3 tools/pwa-check.py` | 27 checks on the production build: SW lifecycle, versioned caches, precache contents, `503 {"error":"offline"}` payloads for both API hosts, `offline.html` fallback, cached-shell boot with the server stopped, `_headers`/`_redirects`/manifest. |
 | `python3 tools/a11y-check.py` | axe-core 4.10.2 audit of landing, workspace, results, overlays and mobile — **0 serious/critical violations** in dark and light themes (`KF_THEME=light`). |

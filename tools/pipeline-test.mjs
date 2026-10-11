@@ -288,6 +288,44 @@ try {
   threw = err;
 }
 check('missing section names the key', Boolean(threw) && /"script"/.test(threw.message), threw?.message);
+check('missing section is retryable and user-facing', threw?.type === 'INCOMPLETE_OUTPUT' && threw?.action === 'RETRY');
+
+/* ═══ 8b. Truncated completion ═════════════════════════════════════════ */
+section('8b. Truncated completion');
+const { generateScript } = await import('../src/services/groq.js');
+const stubJina = cleanMarkdown(
+  '# Acme Boards\n\nProject tracking for small teams, with live tiles for every project.\n\n## Board view\n\nDrag cards between columns and every status change syncs instantly across devices.'
+);
+const realFetch = globalThis.fetch;
+let fetchCalls = 0;
+globalThis.fetch = async () => {
+  fetchCalls += 1;
+  return new Response(
+    JSON.stringify({
+      id: 'stub',
+      model: 'openai/gpt-oss-120b',
+      choices: [{ index: 0, message: { role: 'assistant', content: '{"meta": {"appName": "Acme"' }, finish_reason: 'length' }],
+      usage: { prompt_tokens: 100, completion_tokens: 3600 },
+    }),
+    { status: 200, headers: { 'Content-Type': 'application/json' } }
+  );
+};
+let truncThrew = null;
+try {
+  await generateScript(
+    'https://acme.example',
+    { features: 'Live boards', length: 90, tone: 'professional', videoTool: 'any' },
+    stubJina,
+    'gsk_test_key_not_a_real_key_0',
+    'openai/gpt-oss-120b'
+  );
+} catch (err) {
+  truncThrew = err;
+}
+globalThis.fetch = realFetch;
+check('finish_reason length → named truncation error', truncThrew?.type === 'TRUNCATED', truncThrew?.message);
+check('truncation is retryable', truncThrew?.action === 'RETRY');
+check('truncation does not silently call the other model', fetchCalls === 1, `${fetchCalls} call(s)`);
 
 const offTimings = JSON.stringify({
   ...goodPayload,

@@ -4,15 +4,15 @@
    Usage in the browser console:
      __keyframeTest.all()                       // offline suite (no key needed)
      __keyframeTest.jina('https://tailwindcss.com')
-     __keyframeTest.groq('gsk_...', 90)         // live generation checks
-     __keyframeTest.groq('gsk_...', 60, 'energetic')
+     __keyframeTest.groq()                      // live generation, bundled key
+     __keyframeTest.groq(60, 'energetic')
    ═══════════════════════════════════════════════════════════════════════════ */
 
 import { fetchAndCleanJina, isValidUrl, cleanMarkdown } from '../services/jina.js';
 import { buildFullPrompt } from '../services/promptBuilder.js';
 import { parseAndValidateOutput } from '../services/outputParser.js';
 import { GroqError, classifyGroqStatus } from '../services/errorClassifier.js';
-import { generateWithFallback } from '../services/groq.js';
+import { generateWithFallback, resolveApiKey } from '../services/groq.js';
 import { secondsToTimestamp, repairTimings, sumDurations } from '../utils/timing.js';
 import { countWords, maxWordsForDuration, scriptWordStats } from '../utils/wordCount.js';
 
@@ -102,7 +102,8 @@ async function jinaSuite(url = 'https://tailwindcss.com/') {
   return report('jina suite');
 }
 
-async function groqSuite(apiKey, length = 90, tone = 'professional') {
+async function groqSuite(length = 90, tone = 'professional') {
+  const apiKey = resolveApiKey();
   console.log(`%cKeyframe · live Groq generation (${length}s, ${tone})`, 'font-weight:bold;font-size:13px');
   const jina = await fetchAndCleanJina('https://tailwindcss.com/');
   const res = await generateWithFallback(
@@ -131,7 +132,7 @@ export function install() {
     all: async () => {
       offlineSuite();
       await jinaSuite();
-      return 'Offline + Jina suites complete. Pass a key to __keyframeTest.groq().';
+      return 'Offline + Jina suites complete. __keyframeTest.groq() runs a live generation with the bundled key.';
     },
     offline: offlineSuite,
     jina: jinaSuite,
@@ -139,7 +140,7 @@ export function install() {
   };
   window.__keyframeTest = api;
   console.log(
-    '%c▶ Keyframe dev harness ready%c — try __keyframeTest.all() or __keyframeTest.groq("gsk_…", 90)',
+    '%c▶ Keyframe dev harness ready%c — try __keyframeTest.all() or __keyframeTest.groq()',
     'color:#6C5CE7;font-weight:bold;font-size:13px',
     'color:#9494A8'
   );

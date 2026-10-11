@@ -189,7 +189,7 @@ function Shell({ settings, updateSetting, history, isOnline, pwa, appState }) {
 
         /* Writing the script (steps 3–5) */
         groqAbort.current = new AbortController();
-        const { key } = resolveApiKey();
+        const key = resolveApiKey();
         const userInputs = {
           features,
           length: input.length,

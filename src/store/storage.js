@@ -7,7 +7,9 @@
 /* ── localStorage keys ─────────────────────────────────────────────────── */
 export const KF_KEYS = {
   settings: 'kf_settings',
-  groqKey: 'kf_groq_key',
+  /* kf_groq_key is intentionally absent: an earlier build kept a pasted Groq
+     key there, and nothing reads it any more. clearAllLocalStorage() wipes by
+     the kf_ prefix, so stale values left by those builds still get cleared. */
   lastInputs: 'kf_last_inputs',
   historyIndex: 'kf_history_index',
   theme: 'kf_theme',
@@ -115,11 +117,6 @@ export function readLastInputs() {
 export function readHistoryIndex() {
   const stored = readJSON(KF_KEYS.historyIndex, []);
   return Array.isArray(stored) ? stored : [];
-}
-
-export function readGroqKey() {
-  const key = readLS(KF_KEYS.groqKey, '');
-  return typeof key === 'string' ? key.trim() : '';
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
