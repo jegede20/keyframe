@@ -32,3 +32,6 @@ pnpm-debug.log*
 
 # Cloudflare Pages
 .wrangler
+
+# Vercel CLI state
+.vercel
