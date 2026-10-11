@@ -42,7 +42,7 @@ Last full run: **2026-10-11**, all suites green (numbers below are from that run
 | Suite | What it is | Dev `:5173` | Prod `:4173` |
 | --- | --- | --- | --- |
 | `tools/pipeline-test.mjs` | 90 checks, no browser: cleaning passes, prompt assembly, timing, parser repair, error classification, stubbed truncation | 90 pass / 5 skipped (live-only) | — |
-| `tools/browser-check.py` | 54 checks of the real UI, incl. IndexedDB round-trip, prune at the 50-record cap, Clear All Data | 54/54 | 39/39 + 12 skips |
+| `tools/browser-check.py` | 59 checks of the real UI, incl. IndexedDB round-trip, prune at the 50-record cap, install-banner geometry, Clear All Data | 59/59 | 44/44 + 12 skips |
 | `tools/e2e-check.py` | 59 checks with mocked Jina + Groq: full generation, cancel, clipboard, history, rate limits, offline, cut-short, incomplete | 59/59 | 59/59 |
 | `tools/motion-audit.py` | 14 checks: every element, both motion states | 14/14 | 14/14 |
 | `tools/a11y-check.py` | axe-core 4.10.2 across 7 surfaces, per theme | 0 violations (dark, light) | — |
@@ -72,8 +72,13 @@ Last full run: **2026-10-11**, all suites green (numbers below are from that run
 Everything above is about a local build; the numbers also hold on the
 deployment that actually ships — `KF_BASE=https://keyframe-nine.vercel.app`:
 
+* `browser-check.py` **44/44 (+12 dev-only skips)** against the Vercel
+  deployment — landing render, settings/theme, history, IndexedDB, the mobile
+  layout and the install-banner geometry all hold on the host, not just locally.
 * `e2e-check.py` **59/59** against the Vercel deployment (mocked Jina + Groq:
   full generation, cancel, offline path, rate limits, history round-trip).
+* `a11y-check.py` **0 violations at any impact**, dark and light, against the
+  Vercel deployment.
 * `live-check.py` **11/11** against the Vercel deployment — a real `r.jina.ai`
   fetch and a real Groq generation with the bundled key, driven from a browser,
   no proxy in between. That is Rules 3, 4 and 6 proven end to end on the host.

@@ -462,6 +462,85 @@ async def main():
         )
         await screenshot(tab, "05-mobile-landing.png")
 
+        # ── Install banner geometry ──────────────────────────────────
+        # Guards the CLS fix: the banner must float (position: fixed), never
+        # cover the hero headline, clear the mobile action bar, and sit in the
+        # same bottom band as the toasts (76px mobile / 24px desktop).
+        # headless Chrome never fires beforeinstallprompt, so synthesize the
+        # event the hook listens for — the banner is otherwise never rendered.
+        await evaluate(
+            tab,
+            "(() => { window.dispatchEvent(new Event('beforeinstallprompt')); return true; })()",
+        )
+        await asyncio.sleep(0.6)
+        banner = await evaluate(
+            tab,
+            """(() => {
+              const b = document.querySelector('.kf-install-banner');
+              const h1 = document.querySelector('h1');
+              if (!b || !h1) return { shown: false };
+              const rb = b.getBoundingClientRect(), rh = h1.getBoundingClientRect();
+              const bar = document.querySelector('.kf-bottombar');
+              const barShown = !!bar && getComputedStyle(bar).display !== 'none' && bar.getBoundingClientRect().height > 0;
+              const rbar = barShown ? bar.getBoundingClientRect() : null;
+              const hit = (a, c) => a.left < c.right && c.left < a.right && a.top < c.bottom && c.top < a.bottom;
+              return {
+                shown: true,
+                position: getComputedStyle(b).position,
+                coversHero: hit(rb, rh),
+                inside: rb.top >= -1 && rb.bottom <= window.innerHeight + 1,
+                bottomGap: Math.round(window.innerHeight - rb.bottom),
+                hitsBar: rbar ? hit(rb, rbar) : false,
+                gapAboveBar: rbar ? Math.round(rbar.top - rb.bottom) : null,
+              };
+            })()""",
+        )
+        bd = banner or {}
+        check("install banner appears on beforeinstallprompt", bd.get("shown") is True)
+        check("install banner is fixed, not in flow", bd.get("position") == "fixed", str(bd.get("position")))
+        check(
+            "install banner never covers the hero headline",
+            bd.get("coversHero") is False and bd.get("inside") is True,
+            f"{bd.get('bottomGap')}px above the viewport bottom",
+        )
+        check(
+            "install banner clears the mobile action bar",
+            bd.get("hitsBar") is False and abs((bd.get("bottomGap") or 0) - 76) <= 2,
+            f"{bd.get('gapAboveBar')}px clear of the bar (76px band)",
+        )
+        # …and drops to the 24px band once the mobile bar hides (≥768px)
+        await tab.send_command(
+            "Emulation.setDeviceMetricsOverride",
+            {"width": 1440, "height": 900, "deviceScaleFactor": 1, "mobile": False},
+        )
+        await asyncio.sleep(0.4)
+        desk = await evaluate(
+            tab,
+            """(() => {
+              const b = document.querySelector('.kf-install-banner');
+              if (!b) return { shown: false };
+              return { shown: true, gap: Math.round(window.innerHeight - b.getBoundingClientRect().bottom), fixed: getComputedStyle(b).position === 'fixed' };
+            })()""",
+        )
+        dk = desk or {}
+        check(
+            "install banner anchors to the desktop 24px band",
+            dk.get("shown") is True and dk.get("fixed") is True and abs((dk.get("gap") or 0) - 24) <= 2,
+            f"{dk.get('gap')}px",
+        )
+        # back to mobile, then dismiss through the real control so nothing
+        # downstream inherits a floating overlay
+        await tab.send_command(
+            "Emulation.setDeviceMetricsOverride",
+            {"width": 390, "height": 844, "deviceScaleFactor": 3, "mobile": True},
+        )
+        await asyncio.sleep(0.3)
+        await evaluate(
+            tab,
+            """(() => { const b = document.querySelector('.kf-install-banner button[aria-label="Dismiss install banner"]'); if (b) b.click(); return true; })()""",
+        )
+        await asyncio.sleep(0.3)
+
         # hamburger drawer
         await evaluate(tab, """document.querySelector('.kf-hamburger').click()""")
         await asyncio.sleep(0.5)

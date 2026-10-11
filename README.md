@@ -126,14 +126,15 @@ Every browser suite accepts `KF_BASE`, so the same checks can be pointed at the 
 
 ```bash
 npm run build && npm run preview -- --port 4173 &
-KF_BASE=http://localhost:4173 python3 tools/browser-check.py   # 39/39 (12 dev-only skips)
+KF_BASE=http://localhost:4173 python3 tools/browser-check.py   # 44/44 (12 dev-only skips)
 KF_BASE=http://localhost:4173 python3 tools/e2e-check.py       # 59/59
 KF_BASE=http://localhost:4173 python3 tools/live-check.py      # 11/11, real APIs
 ```
 
-The five skips are the dev-only console harness and the source-module storage
-roundtrip — the harness is deliberately excluded from production builds, so
-those checks skip rather than fail when the target is a built bundle.
+The twelve skips are all dev-only: the console harness (2 checks), the
+source-module storage round-trip and prune tests (5), and the storage seeding
+behind Clear All Data (5). Those paths import `src/` modules directly, so they
+skip rather than fail when the target is a built bundle.
 
 ## Automated verification (`tools/`)
 
@@ -145,7 +146,7 @@ the evidence for each, lives in [`VERIFICATION.md`](VERIFICATION.md).
 | Command | What it proves |
 | --- | --- |
 | `node tools/run-pipeline-test.mjs` | 90 checks: URL validation, all six cleaning passes, live Jina read, 4-layer prompt assembly, timing repair, 130 wpm math, parser repair paths, error classification, and a stubbed `finish_reason: "length"` response that must surface as a retryable truncation without spending a second model. Add `GROQ_API_KEY=gsk_…` to run the live-generation checks. |
-| `python3 tools/browser-check.py` | 54 checks against the dev server (12 are skipped on the production build, where there is no source-module import, dev harness or seeded storage): landing render, FAQ accordion, output preview tabs, settings + theme persistence (FOUC script), history drawer, IndexedDB round-trip, URL validation, hero → workspace entry, error box with preserved inputs, mobile layout + 44px touch targets, hamburger drawer, and **Clear All Data** (seeds a script + settings, walks the confirm dialog, then proves every `kf_*` key and every record is gone). |
+| `python3 tools/browser-check.py` | 59 checks against the dev server (12 are skipped on the production build, where there is no source-module import, dev harness or seeded storage): landing render, FAQ accordion, output preview tabs, settings + theme persistence (FOUC script), history drawer, IndexedDB round-trip, URL validation, hero → workspace entry, error box with preserved inputs, mobile layout + 44px touch targets, **install-banner geometry** (floats, clears the hero and the action bar, same 76px / 24px band as the toasts), hamburger drawer, and **Clear All Data** (seeds a script + settings, walks the confirm dialog, then proves every `kf_*` key and every record is gone). |
 | `python3 tools/e2e-check.py` | 59 checks with **mocked Jina + Groq**: full generation, stepper, cancel (inputs preserved), 8 shot cards, timeline connectors, pace chips, all three tabs, real clipboard contents for Copy All / per-shot copy, New Script → auto-save → history → reload, "+ Add to Script" regeneration, reduced-motion, **both rate-limit paths** (primary 429 → second model + toast; both limited → error card with provider detail, inputs preserved, Try Again re-issues), **generation while offline**, and **responses that stop early** (a cut-short response → named card, inputs preserved, one model call on retry; an incomplete one naming the missing section). |
 | `python3 tools/motion-audit.py` | **Rule 8, exhaustively.** Walks every element on landing / workspace / results / settings / history / toast in both motion states and asserts that with `prefers-reduced-motion: reduce` nothing has a running duration or delay — including the inline JSX `transition:` styles a stylesheet gate cannot reach — that reveals stay readable, and that motion-allowed users still get their animations. |
 | `python3 tools/pwa-check.py` | 27 checks on the production build: SW lifecycle, versioned caches, precache contents, `503 {"error":"offline"}` payloads for both API hosts, `offline.html` fallback, cached-shell boot with the server stopped, `_headers`/`_redirects`/manifest. |

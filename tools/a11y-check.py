@@ -1,7 +1,10 @@
 """
-Accessibility audit with axe-core (injected from unpkg into the live dev build).
+Accessibility audit with axe-core (injected from unpkg into the running build).
 Covers the landing page, the input workspace, the results view and the mobile
 viewport, then reports violations with impact.
+
+Targets the dev server by default; KF_BASE points it at the built bundle or a
+deployment, like the other browser suites. Theme via KF_THEME.
 """
 import asyncio
 import json
@@ -10,7 +13,8 @@ import sys
 
 from choreographer import Browser
 
-DEV = "http://localhost:5173/"
+# Base URL is overridable (KF_BASE), e.g. https://keyframe-nine.vercel.app
+BASE = (os.environ.get("KF_BASE") or "http://localhost:5173").rstrip("/") + "/"
 AXE = "https://unpkg.com/axe-core@4.10.2/axe.min.js"
 
 SAMPLE_OUTPUT = {
@@ -53,7 +57,7 @@ async def run_axe(tab, label):
 async def main():
     violations_all = []
     async with Browser(headless=True) as browser:
-        tab = await browser.create_tab(DEV)
+        tab = await browser.create_tab(BASE)
         await tab.send_command("Emulation.setFocusEmulationEnabled", {"enabled": True})
         await tab.send_command("Page.enable")
         await tab.send_command("Runtime.enable")
@@ -61,7 +65,7 @@ async def main():
         # Theme under audit: KF_THEME=dark (default) or KF_THEME=light
         wanted = os.environ.get("KF_THEME", "dark")
         await ev(tab, f"localStorage.setItem('kf_settings', JSON.stringify({{theme:'{wanted}'}}))")
-        await tab.send_command("Page.navigate", {"url": DEV})
+        await tab.send_command("Page.navigate", {"url": BASE})
         await asyncio.sleep(2.5)
         await ev(tab, f"(async () => {{ const s=document.createElement('script'); s.src='{AXE}'; document.head.appendChild(s); await new Promise(r => s.onload=r); return !!window.axe; }})()")
         theme = await ev(tab, "document.documentElement.getAttribute('data-theme')")
