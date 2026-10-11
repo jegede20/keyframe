@@ -112,6 +112,21 @@ Three changes got it there, each verified by measurement:
 
 Run the acceptance checks yourself with `npm run lighthouse` (see `tools/lighthouse.mjs`) after `npm run build && npm run preview`.
 
+### Running the suites against the built bundle
+
+Every browser suite accepts `KF_BASE`, so the same checks can be pointed at the artifact that actually ships — the one with inlined CSS, hashed assets and a live service worker:
+
+```bash
+npm run build && npm run preview -- --port 4173 &
+KF_BASE=http://localhost:4173 python3 tools/browser-check.py   # 39/39 (5 dev-only skips)
+KF_BASE=http://localhost:4173 python3 tools/e2e-check.py       # 52/52
+KF_BASE=http://localhost:4173 python3 tools/live-check.py      # 11/11, real APIs
+```
+
+The five skips are the dev-only console harness and the source-module storage
+roundtrip — the harness is deliberately excluded from production builds, so
+those checks skip rather than fail when the target is a built bundle.
+
 ## Automated verification (`tools/`)
 
 Everything below runs without any paid service. Chrome is pulled by
@@ -120,8 +135,8 @@ Everything below runs without any paid service. Chrome is pulled by
 | Command | What it proves |
 | --- | --- |
 | `node tools/run-pipeline-test.mjs` | 79 checks: URL validation, all six cleaning passes, live Jina read, 4-layer prompt assembly, timing repair, 130 wpm math, parser repair paths, error classification. Add `GROQ_API_KEY=gsk_…` to run the live-generation checks. |
-| `python3 tools/browser-check.py` | 42 checks against the dev server: landing render, FAQ accordion, output preview tabs, settings + theme persistence (FOUC script), history drawer, IndexedDB round-trip, URL validation, hero → workspace entry, error box with preserved inputs, mobile layout + 44px touch targets, hamburger drawer. |
-| `python3 tools/e2e-check.py` | 42 checks with **mocked Jina + Groq**: full generation, stepper, cancel (inputs preserved), 8 shot cards, timeline connectors, pace chips, all three tabs, real clipboard contents for Copy All / per-shot copy, New Script → auto-save → history → reload, "+ Add to Script" regeneration, reduced-motion. |
+| `python3 tools/browser-check.py` | 44 checks against the dev server: landing render, FAQ accordion, output preview tabs, settings + theme persistence (FOUC script), history drawer, IndexedDB round-trip, URL validation, hero → workspace entry, error box with preserved inputs, mobile layout + 44px touch targets, hamburger drawer. |
+| `python3 tools/e2e-check.py` | 52 checks with **mocked Jina + Groq**: full generation, stepper, cancel (inputs preserved), 8 shot cards, timeline connectors, pace chips, all three tabs, real clipboard contents for Copy All / per-shot copy, New Script → auto-save → history → reload, "+ Add to Script" regeneration, reduced-motion, **both rate-limit paths** (primary 429 → second model + toast; both limited → error card with provider detail, inputs preserved, Try Again re-issues) and **generation while offline**. |
 | `python3 tools/pwa-check.py` | 27 checks on the production build: SW lifecycle, versioned caches, precache contents, `503 {"error":"offline"}` payloads for both API hosts, `offline.html` fallback, cached-shell boot with the server stopped, `_headers`/`_redirects`/manifest. |
 | `python3 tools/a11y-check.py` | axe-core 4.10.2 audit of landing, workspace, results, overlays and mobile — **0 serious/critical violations** in dark and light themes (`KF_THEME=light`). |
 | `python3 tools/live-check.py [url]` | **The only live suite.** Drives the real UI against real r.jina.ai + api.groq.com: generation, shot cards, 300–600 word video prompt, cut list, clipboard contents, history — 11 checks. Spends real free-tier quota, so run it before a release rather than in the routine loop. |

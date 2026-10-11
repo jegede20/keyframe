@@ -26,7 +26,7 @@ from choreographer.browsers.chromium import ChromeNotFoundError
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-BASE = "http://localhost:5173/"
+BASE = (os.environ.get("KF_BASE", "http://localhost:5173").rstrip("/")) + "/"
 TARGET = sys.argv[1] if len(sys.argv) > 1 else "https://tailwindcss.com"
 FEATURES = "Utility-first CSS, responsive variants, dark mode"
 TIMEOUT_S = 180
@@ -66,7 +66,7 @@ async def main():
                 await tab.send_command(
                     "Browser.grantPermissions",
                     {
-                        "origin": "http://localhost:5173",
+                        "origin": BASE.rstrip("/"),
                         "permissions": ["clipboardReadWrite", "clipboardSanitizedWrite"],
                     },
                 )

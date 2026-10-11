@@ -12,7 +12,10 @@ import sys
 
 from choreographer import Browser
 
-URL = "http://localhost:5173/"
+# Base URL is overridable so the same suite can be pointed at the built
+# bundle (npm run preview -- --port 4173) — see KF_BASE.
+BASE = os.environ.get("KF_BASE", "http://localhost:5173").rstrip("/")
+URL = BASE + "/"
 OUT = os.path.join(os.path.dirname(__file__), "..", "artifacts")
 os.makedirs(OUT, exist_ok=True)
 
@@ -99,7 +102,7 @@ async def main():
         try:
             await tab.send_command(
                 "Browser.grantPermissions",
-                {"origin": "http://localhost:5173", "permissions": ["clipboardReadWrite", "clipboardSanitizedWrite"]},
+                {"origin": BASE, "permissions": ["clipboardReadWrite", "clipboardSanitizedWrite"]},
             )
         except Exception as exc:  # noqa: BLE001 - permission API varies by Chrome build
             print(f"  (clipboard permission not granted: {exc})")
@@ -307,7 +310,7 @@ async def main():
         check("stats bar shows totals", await ev(tab, "document.body.innerText.includes('TOTAL: 90s')"))
         check("8 shot cards", await ev(tab, "document.querySelectorAll('article').length") >= 8)
         check("timeline connectors between shots", await ev(tab, "document.querySelectorAll('.kf-timeline-connector').length") == 7)
-        check("narration pace chips rendered", await ev(tab, "(document.body.innerText.match(/w \/ \\d+w max/g)||[]).length") >= 8)
+        check("narration pace chips rendered", await ev(tab, "document.body.innerText.split(String.fromCharCode(10)).filter(s => /[0-9]+w max/.test(s)).length") >= 8)
         check("input collapsed to summary", await ev(tab, "!!document.getElementById('kf-main-features') === false") and await ev(tab, "document.body.innerText.includes('3 features')"))
         check("per-shot copy present", await ev(tab, "document.body.innerText.includes('Copy shot')"))
         await shot(tab, "13-results-script.png")
@@ -380,6 +383,169 @@ async def main():
         check("inputs restored on reload", await ev(tab, "document.getElementById('kf-hero-url')?.value") == "https://acme.example")
         check("landing shown again (fresh session view)", await ev(tab, "document.body.innerText.includes('Turn any app into a')"))
         check("nav history badge shows 1", await ev(tab, """(() => { const b = [...document.querySelectorAll('button')].find(x=>(x.getAttribute('aria-label')||'').startsWith('Script history')); return b ? /1/.test(b.textContent) : false; })()"""))
+
+        # ── 9. Rate-limit paths (429 from Groq) ──────────────────────────
+        # The likeliest real-world failure once the key is shared by everyone
+        # using the deployed app: the free-tier quota runs out mid-generation.
+        # Two behaviours matter — falling back to the second model, and telling
+        # the user plainly when the whole quota is spent.
+        print("\n9. Rate-limit handling")
+
+        def rate_limit_stub(both_models):
+            """Mock Groq: 120b always 429; optionally the 20b too."""
+            return """
+              (() => {
+                const realFetch = window.fetch.bind(window);
+                window.__groqHits = [];
+                window.fetch = async (input, init) => {
+                  const url = typeof input === 'string' ? input : (input && input.url) || '';
+                  if (url.startsWith('https://r.jina.ai/')) {
+                    const md = ['# Acme Boards — project tracking', '', '## Home dashboard',
+                      'Live tiles for every project, updated in real time for the whole team to see.',
+                      '', '## Board view',
+                      'Drag cards between columns and every status change syncs instantly across devices.'].join('\\n');
+                    return new Response(md, { status: 200, headers: { 'Content-Type': 'text/markdown' } });
+                  }
+                  if (url.startsWith('https://api.groq.com/')) {
+                    const body = JSON.parse(init.body);
+                    window.__groqHits.push(body.model);
+                    const fail = body.model === 'openai/gpt-oss-120b' || %BOTH%;
+                    if (fail) {
+                      return new Response(JSON.stringify({ error: { message: 'Rate limit reached for model on tokens per minute (TPM)' } }),
+                        { status: 429, headers: { 'Content-Type': 'application/json' } });
+                    }
+                    return new Response(JSON.stringify({
+                      id: 'mock', model: body.model,
+                      choices: [{ index: 0, message: { role: 'assistant', content: JSON.stringify(window.__mock) }, finish_reason: 'stop' }],
+                      usage: { prompt_tokens: 100, completion_tokens: 200 }
+                    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+                  }
+                  return realFetch(input, init);
+                };
+                window.__mock = %MOCK%;
+                return true;
+              })()
+            """.replace('%BOTH%', 'true' if both_models else 'false').replace('%MOCK%', json.dumps(SAMPLE_OUTPUT))
+
+        def fill_and_generate(js_stub):
+            return """
+              (async () => {
+                %s
+                await new Promise(r => setTimeout(r, 50));
+                const input = document.getElementById('kf-hero-url');
+                const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+                set.call(input, 'https://acme.example');
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                await new Promise(r => setTimeout(r, 200));
+                document.querySelector('button[type=submit]').click();
+                return true;
+              })()
+            """ % js_stub
+
+        # 9a. Primary model 429s, fallback model succeeds.
+        await tab.send_command("Page.navigate", {"url": URL})
+        await asyncio.sleep(2.5)
+        await ev(tab, "[...document.querySelectorAll('button')].find(b => /Clear|×/.test(b.getAttribute('aria-label')||'')) && null")
+        await ev(tab, fill_and_generate(rate_limit_stub(both_models=False)))
+        await asyncio.sleep(1.0)
+        if await ev(tab, "!!document.getElementById('kf-main-features')"):
+            await ev(tab, """(() => {
+              const ta = document.getElementById('kf-main-features');
+              Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set.call(ta, 'Live boards, exports');
+              ta.dispatchEvent(new Event('input', { bubbles: true }));
+              const form = [...document.querySelectorAll('form')].find(f => f.querySelector('#kf-main-features'));
+              form.querySelector('button[type=submit]').click();
+              return true;
+            })()""")
+        results_ok = False
+        for _ in range(24):
+            await asyncio.sleep(0.5)
+            if await ev(tab, "document.body.innerText.includes('SHOT 1')"):
+                results_ok = True
+                break
+        hits = await ev(tab, "JSON.stringify(window.__groqHits || [])")
+        print(f"  (models called: {hits})")
+        check("429 on primary falls back to the second model", results_ok and '"openai/gpt-oss-20b"' in (hits or ""))
+        check(
+            "fallback is surfaced to the user",
+            await ev(tab, "document.body.innerText.includes('switched to openai/gpt-oss-20b')"),
+        )
+
+        # 9b. Both models 429 — the quota is spent.
+        await tab.send_command("Page.navigate", {"url": URL})
+        await asyncio.sleep(2.5)
+        await ev(tab, fill_and_generate(rate_limit_stub(both_models=True)))
+        await asyncio.sleep(1.0)
+        if await ev(tab, "!!document.getElementById('kf-main-features')"):
+            await ev(tab, """(() => {
+              const ta = document.getElementById('kf-main-features');
+              Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set.call(ta, 'Live boards, exports');
+              ta.dispatchEvent(new Event('input', { bubbles: true }));
+              const form = [...document.querySelectorAll('form')].find(f => f.querySelector('#kf-main-features'));
+              form.querySelector('button[type=submit]').click();
+              return true;
+            })()""")
+        err_txt = ""
+        for _ in range(40):
+            await asyncio.sleep(0.5)
+            err_txt = (await ev(tab, "document.body.innerText")) or ""
+            if "Rate limit reached" in err_txt:
+                break
+        check("both models limited → rate-limit error card", "Rate limit reached" in err_txt)
+        # The card shows the provider's own detail line when Groq sends one
+        # ("...on tokens per minute (TPM): Limit 8000..."), otherwise our
+        # fallback copy about the quota refilling. Either is a correct answer.
+        check(
+            "rate-limit card explains the wait",
+            "per minute" in err_txt or "refills" in err_txt,
+        )
+        check("rate-limit card offers Try Again", "Try Again" in err_txt)
+        check(
+            "inputs preserved through a 429",
+            (await ev(tab, "document.getElementById('kf-main-url')?.value")) == "https://acme.example"
+            and (await ev(tab, "document.getElementById('kf-main-features')?.value")) == "Live boards, exports",
+        )
+        before = await ev(tab, "window.__groqHits.length")
+        await ev(tab, """[...document.querySelectorAll('button')].find(b => b.textContent.includes('Try Again')).click()""")
+        await asyncio.sleep(3.5)
+        after = await ev(tab, "window.__groqHits.length")
+        check("Try Again re-issues the request", isinstance(after, int) and after > (before or 0), f"{before} → {after}")
+
+        # ── 10. Offline generation attempt ───────────────────────────────
+        print("\n10. Generation while offline")
+        await tab.send_command("Page.navigate", {"url": URL})
+        await asyncio.sleep(2.5)
+        await ev(tab, """(() => {
+          Object.defineProperty(navigator, 'onLine', { value: false, configurable: true });
+          window.dispatchEvent(new Event('offline'));
+          return true;
+        })()""")
+        await asyncio.sleep(0.4)
+        await ev(tab, """(() => {
+          const input = document.getElementById('kf-hero-url');
+          const set = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+          set.call(input, 'https://acme.example');
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          return true;
+        })()""")
+        await asyncio.sleep(0.4)
+        await ev(tab, "document.querySelector('button[type=submit]').click()")
+        await asyncio.sleep(3.0)
+        offline_txt = (await ev(tab, "document.body.innerText")) or ""
+        check("offline banner shown", "You're offline" in offline_txt)
+        check(
+            "offline generation blocked with an explanation",
+            "connection" in offline_txt.lower(),
+        )
+        check(
+            "offline attempt keeps the typed URL",
+            (await ev(tab, "document.getElementById('kf-main-url')?.value || document.getElementById('kf-hero-url')?.value")) == "https://acme.example",
+        )
+        await ev(tab, """(() => {
+          Object.defineProperty(navigator, 'onLine', { value: true, configurable: true });
+          window.dispatchEvent(new Event('online'));
+          return true;
+        })()""")
 
         print("\n" + "─" * 60)
         passed = sum(1 for _, ok, _ in results if ok)

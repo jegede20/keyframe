@@ -11,12 +11,23 @@ import sys
 
 from choreographer import Browser
 
-URL = "http://localhost:5173/"
+# Base URL is overridable so the same suite can be pointed at the built
+# bundle (npm run preview -- --port 4173) — see KF_BASE.
+BASE = os.environ.get("KF_BASE", "http://localhost:5173").rstrip("/")
+URL = BASE + "/"
 OUT = os.path.join(os.path.dirname(__file__), "..", "artifacts")
 os.makedirs(OUT, exist_ok=True)
 
 results = []
 console_errors = []
+
+
+skipped = []
+
+
+def skip(name, why):
+    skipped.append((name, why))
+    print(f"  SKIP  {name} — {why}")
 
 
 def check(name, ok, detail=""):
@@ -46,6 +57,18 @@ async def main():
     async with Browser(headless=True) as browser:
         print("Chrome launched")
         tab = await browser.create_tab(URL)
+        await asyncio.sleep(1.0)
+        # The dev-only harness and source-module imports (/src/...) only exist
+        # while Vite serves the app. Against the built bundle these checks are
+        # skipped rather than failed — the harness is deliberately excluded
+        # from production builds.
+        DEV = bool(
+            await evaluate(
+                tab,
+                "!!document.querySelector('script[src*=\"@vite/client\"]')",
+            )
+        )
+        print(f"(target: {BASE} — {'dev server' if DEV else 'production build'})")
 
         # ── collect console + exceptions ─────────────────────────────
         async def on_console(payload):
@@ -213,43 +236,53 @@ async def main():
 
         # ── Dev console harness (offline suite) ─────────────────────
         print("\n6. Dev harness — offline suite")
-        harness_ok = await evaluate(tab, "typeof window.__keyframeTest === 'object'")
-        check("__keyframeTest installed", harness_ok)
-        if harness_ok:
-            suite = await evaluate(
-                tab,
-                """(async () => { const r = await window.__keyframeTest.offline(); return JSON.stringify(r); })()""",
-            )
-            data = json.loads(suite) if suite else {}
-            check("offline suite passes", data.get("failed", 1) == 0, f"{data.get('passed')} passed / {data.get('failed')} failed")
+        if DEV:
+            harness_ok = await evaluate(tab, "typeof window.__keyframeTest === 'object'")
+            check("__keyframeTest installed", harness_ok)
+            if harness_ok:
+                suite = await evaluate(
+                    tab,
+                    """(async () => { const r = await window.__keyframeTest.offline(); return JSON.stringify(r); })()""",
+                )
+                data = json.loads(suite) if suite else {}
+                check("offline suite passes", data.get("failed", 1) == 0, f"{data.get('passed')} passed / {data.get('failed')} failed")
+        else:
+            skip("__keyframeTest installed", "dev-only harness, excluded from production builds")
+            skip("offline suite passes", "dev-only harness, excluded from production builds")
 
         # ── IndexedDB roundtrip (storage adapter in the real browser) ──
         print("\n7. Storage roundtrip (IndexedDB + localStorage via app modules)")
-        rt = await evaluate(
-            tab,
-            """(async () => {
-              const mod = await import('/src/store/storage.js');
-              const rec = {
-                id: 'browser-test-1',
-                input: { url: 'https://example.com', features: 'x', length: 60, tone: 'casual', videoTool: 'any' },
-                output: { meta: { appName: 'Test', totalSeconds: 60, shotCount: 5, estimatedWordCount: 40, tone: 'casual' }, script: [{ shotNumber: 1 }], cutList: [], videoPrompt: { target: 'any', fullPrompt: 'x' } },
-                createdAt: new Date().toISOString(),
-                generation: { model: 'test', inputTokens: 1, outputTokens: 1, generationMs: 5 },
-              };
-              await mod.saveScript(rec);
-              const back = await mod.getScript('browser-test-1');
-              const count = await mod.countScripts();
-              await mod.deleteScript('browser-test-1');
-              const after = await mod.getScript('browser-test-1');
-              mod.writeJSON('kf_settings', { theme: 'dark', defaultLength: 90 });
-              const s = mod.readSettings();
-              return JSON.stringify({ saved: !!back, appName: back?.output?.meta?.appName, count, deleted: after === null || after === undefined, settingsMerged: s.defaultTone === 'professional' });
-            })()""",
-        )
-        rt_data = json.loads(rt) if rt else {}
-        check("IndexedDB save/read", rt_data.get("saved") and rt_data.get("appName") == "Test", str(rt_data))
-        check("IndexedDB delete", rt_data.get("deleted"), str(rt_data.get("deleted")))
-        check("settings merge with defaults", rt_data.get("settingsMerged"))
+        if DEV:
+            rt = await evaluate(
+                tab,
+                """(async () => {
+                  const mod = await import('/src/store/storage.js');
+                  const rec = {
+                    id: 'browser-test-1',
+                    input: { url: 'https://example.com', features: 'x', length: 60, tone: 'casual', videoTool: 'any' },
+                    output: { meta: { appName: 'Test', totalSeconds: 60, shotCount: 5, estimatedWordCount: 40, tone: 'casual' }, script: [{ shotNumber: 1 }], cutList: [], videoPrompt: { target: 'any', fullPrompt: 'x' } },
+                    createdAt: new Date().toISOString(),
+                    generation: { model: 'test', inputTokens: 1, outputTokens: 1, generationMs: 5 },
+                  };
+                  await mod.saveScript(rec);
+                  const back = await mod.getScript('browser-test-1');
+                  const count = await mod.countScripts();
+                  await mod.deleteScript('browser-test-1');
+                  const after = await mod.getScript('browser-test-1');
+                  mod.writeJSON('kf_settings', { theme: 'dark', defaultLength: 90 });
+                  const s = mod.readSettings();
+                  return JSON.stringify({ saved: !!back, appName: back?.output?.meta?.appName, count, deleted: after === null || after === undefined, settingsMerged: s.defaultTone === 'professional' });
+                })()""",
+            )
+            rt_data = json.loads(rt) if rt else {}
+            check("IndexedDB save/read", rt_data.get("saved") and rt_data.get("appName") == "Test", str(rt_data))
+            check("IndexedDB delete", rt_data.get("deleted"), str(rt_data.get("deleted")))
+            check("settings merge with defaults", rt_data.get("settingsMerged"))
+
+        else:
+            skip("IndexedDB save/read", "imports a source module — dev server only")
+            skip("IndexedDB delete", "imports a source module — dev server only")
+            skip("settings merge with defaults", "imports a source module — dev server only")
 
         # ── Validation + inputs persistence ──────────────────────────
         print("\n8. Input validation + persistence (Step 43/46/47)")
@@ -400,7 +433,7 @@ async def main():
         print("\n" + "─" * 60)
         passed = sum(1 for _, ok, _ in results if ok)
         failed = [(n, d) for n, ok, d in results if not ok]
-        print(f"Browser check: {passed}/{len(results)} passed")
+        print(f"Browser check: {passed}/{len(results)} passed" + (f", {len(skipped)} skipped" if skipped else ""))
         if console_errors:
             print("Console errors captured:")
             for e in console_errors[:8]:
