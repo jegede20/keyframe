@@ -248,7 +248,10 @@ export async function saveScript(record) {
 export async function getScript(id) {
   try {
     const db = await openDB();
-    return await withStore('readonly', (store) => requestToPromise(store.get(id)));
+    // IndexedDB resolves a miss with `undefined`; the fallback path below
+    // answers with `null`. Normalise so callers can test one value.
+    const record = await withStore('readonly', (store) => requestToPromise(store.get(id)));
+    return record === undefined ? null : record;
   } catch (err) {
     return memoryStore.get(id) || null;
   }
@@ -319,24 +322,41 @@ export async function pruneOldScripts(max = HISTORY_MAX) {
     const total = await withStore('readonly', (store) => requestToPromise(store.count()));
     if (typeof total !== 'number' || total <= max) return 0;
 
-    let excess = total - max;
-    const deleted = await new Promise((resolve, reject) => {
-      const tx = db.transaction(STORE, 'readwrite');
+    const excess = total - max;
+
+    /*
+     * Two passes on purpose. Deleting the record a cursor is currently sitting
+     * on and then calling continue() makes the cursor skip its next record —
+     * verified in the browser: five deletions landed on the wrong rows and the
+     * single oldest script survived. So collect the doomed keys first (key
+     * cursors, read-only), then delete them in a second transaction.
+     */
+    const doomedKeys = await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readonly');
       const index = tx.objectStore(STORE).index('createdAt');
-      const cursorReq = index.openCursor(null, 'next'); // ascending = oldest first
-      let removed = 0;
-      cursorReq.onsuccess = () => {
-        const cursor = cursorReq.result;
-        if (!cursor || removed >= excess) return;
-        cursor.delete();
-        removed += 1;
+      const keys = [];
+      const req = index.openKeyCursor(null, 'next'); // ascending = oldest first
+      req.onsuccess = () => {
+        const cursor = req.result;
+        if (!cursor || keys.length >= excess) return;
+        keys.push(cursor.primaryKey);
         cursor.continue();
       };
-      tx.oncomplete = () => resolve(removed);
+      tx.oncomplete = () => resolve(keys);
       tx.onerror = () => reject(tx.error);
       tx.onabort = () => reject(tx.error);
     });
-    return deleted;
+
+    if (!doomedKeys.length) return 0;
+
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, 'readwrite');
+      const store = tx.objectStore(STORE);
+      doomedKeys.forEach((key) => store.delete(key));
+      tx.oncomplete = () => resolve(doomedKeys.length);
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
   } catch (err) {
     console.warn('[Keyframe] pruneOldScripts failed:', err);
     return 0;

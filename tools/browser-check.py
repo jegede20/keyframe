@@ -279,10 +279,48 @@ async def main():
             check("IndexedDB delete", rt_data.get("deleted"), str(rt_data.get("deleted")))
             check("settings merge with defaults", rt_data.get("settingsMerged"))
 
+            # ── History cap (acceptance: prune past 50) ───────────────
+            # Saves 55 records one second apart so the createdAt index has a
+            # real order, then checks the oldest five are gone and the newest
+            # five survived.
+            prune = await evaluate(
+                tab,
+                """(async () => {
+                  const mod = await import('/src/store/storage.js');
+                  const base = Date.now() - 60000;
+                  for (let i = 0; i < 55; i += 1) {
+                    await mod.saveScript({
+                      id: 'prune-' + String(i).padStart(2, '0'),
+                      input: { url: 'https://example.com', features: 'x', length: 60, tone: 'casual', videoTool: 'any' },
+                      output: { meta: { appName: 'P' + i, totalSeconds: 60, shotCount: 1, estimatedWordCount: 1, tone: 'casual' },
+                                script: [{ shotNumber: 1 }], cutList: [], videoPrompt: { target: 'any', fullPrompt: 'x' } },
+                      createdAt: new Date(base + i * 1000).toISOString(),
+                      generation: { model: 'test', inputTokens: 1, outputTokens: 1, generationMs: 1 },
+                    });
+                  }
+                  const before = await mod.countScripts();
+                  const removed = await mod.pruneOldScripts();
+                  const after = await mod.countScripts();
+                  const oldestGone = (await mod.getScript('prune-00')) === null;
+                  const newestKept = !!(await mod.getScript('prune-54'));
+                  // clean up so later sections see a tidy store
+                  for (let i = 0; i < 55; i += 1) await mod.deleteScript('prune-' + String(i).padStart(2, '0'));
+                  return JSON.stringify({ before, removed, after, oldestGone, newestKept });
+                })()""",
+            )
+            pr = json.loads(prune) if prune else {}
+            check("55 records written", pr.get("before") == 55, str(pr.get("before")))
+            check("prune removes the excess", pr.get("removed") == 5, f"removed {pr.get('removed')}")
+            check("exactly 50 survive", pr.get("after") == 50, str(pr.get("after")))
+            check("oldest records dropped first", pr.get("oldestGone") is True)
+            check("newest record kept", pr.get("newestKept") is True)
+
         else:
             skip("IndexedDB save/read", "imports a source module — dev server only")
             skip("IndexedDB delete", "imports a source module — dev server only")
             skip("settings merge with defaults", "imports a source module — dev server only")
+            skip("history prune (55 → 50)", "imports a source module — dev server only")
+            skip("prune keeps the newest records", "imports a source module — dev server only")
 
         # ── Validation + inputs persistence ──────────────────────────
         print("\n8. Input validation + persistence (Step 43/46/47)")

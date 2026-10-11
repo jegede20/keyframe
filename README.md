@@ -118,7 +118,7 @@ Every browser suite accepts `KF_BASE`, so the same checks can be pointed at the 
 
 ```bash
 npm run build && npm run preview -- --port 4173 &
-KF_BASE=http://localhost:4173 python3 tools/browser-check.py   # 39/39 (5 dev-only skips)
+KF_BASE=http://localhost:4173 python3 tools/browser-check.py   # 39/39 (7 dev-only skips)
 KF_BASE=http://localhost:4173 python3 tools/e2e-check.py       # 52/52
 KF_BASE=http://localhost:4173 python3 tools/live-check.py      # 11/11, real APIs
 ```
@@ -134,9 +134,10 @@ Everything below runs without any paid service. Chrome is pulled by
 
 | Command | What it proves |
 | --- | --- |
-| `node tools/run-pipeline-test.mjs` | 79 checks: URL validation, all six cleaning passes, live Jina read, 4-layer prompt assembly, timing repair, 130 wpm math, parser repair paths, error classification. Add `GROQ_API_KEY=gsk_…` to run the live-generation checks. |
-| `python3 tools/browser-check.py` | 44 checks against the dev server: landing render, FAQ accordion, output preview tabs, settings + theme persistence (FOUC script), history drawer, IndexedDB round-trip, URL validation, hero → workspace entry, error box with preserved inputs, mobile layout + 44px touch targets, hamburger drawer. |
+| `node tools/run-pipeline-test.mjs` | 86 checks: URL validation, all six cleaning passes, live Jina read, 4-layer prompt assembly, timing repair, 130 wpm math, parser repair paths, error classification. Add `GROQ_API_KEY=gsk_…` to run the live-generation checks. |
+| `python3 tools/browser-check.py` | 49 checks against the dev server (7 are skipped on the production build, where there is no source-module import or dev harness): landing render, FAQ accordion, output preview tabs, settings + theme persistence (FOUC script), history drawer, IndexedDB round-trip, URL validation, hero → workspace entry, error box with preserved inputs, mobile layout + 44px touch targets, hamburger drawer. |
 | `python3 tools/e2e-check.py` | 52 checks with **mocked Jina + Groq**: full generation, stepper, cancel (inputs preserved), 8 shot cards, timeline connectors, pace chips, all three tabs, real clipboard contents for Copy All / per-shot copy, New Script → auto-save → history → reload, "+ Add to Script" regeneration, reduced-motion, **both rate-limit paths** (primary 429 → second model + toast; both limited → error card with provider detail, inputs preserved, Try Again re-issues) and **generation while offline**. |
+| `python3 tools/motion-audit.py` | **Rule 8, exhaustively.** Walks every element on landing / workspace / results / settings / history / toast in both motion states and asserts that with `prefers-reduced-motion: reduce` nothing has a running duration or delay — including the inline JSX `transition:` styles a stylesheet gate cannot reach — that reveals stay readable, and that motion-allowed users still get their animations. |
 | `python3 tools/pwa-check.py` | 27 checks on the production build: SW lifecycle, versioned caches, precache contents, `503 {"error":"offline"}` payloads for both API hosts, `offline.html` fallback, cached-shell boot with the server stopped, `_headers`/`_redirects`/manifest. |
 | `python3 tools/a11y-check.py` | axe-core 4.10.2 audit of landing, workspace, results, overlays and mobile — **0 serious/critical violations** in dark and light themes (`KF_THEME=light`). |
 | `python3 tools/live-check.py [url]` | **The only live suite.** Drives the real UI against real r.jina.ai + api.groq.com: generation, shot cards, 300–600 word video prompt, cut list, clipboard contents, history — 11 checks. Spends real free-tier quota, so run it before a release rather than in the routine loop. |
