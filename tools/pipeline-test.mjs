@@ -100,6 +100,30 @@ check(
 );
 check('short duplicate lines preserved', (cleanedMessy.match(/^Short$/gm) || []).length === 2);
 
+/* Jina metadata preamble (Title:/URL Source:/Markdown Content:) */
+const preambled = [
+  'Title: Studio — Ship faster',
+  'URL Source: https://studio.example.com/',
+  'Published Time: 2026-01-14T09:00:00Z',
+  'Markdown Content:',
+  '# Studio',
+  '',
+  '## Board view',
+  'Drag a card and every change lands in the shared workspace instantly for the team.',
+].join('\n');
+const cleanedPreamble = cleanMarkdown(preambled);
+check('preamble Title: line stripped', !/^Title:/m.test(cleanedPreamble));
+check('preamble URL Source: stripped', !/^URL Source:/m.test(cleanedPreamble));
+check('preamble Markdown Content: marker stripped', !/^Markdown Content:/m.test(cleanedPreamble));
+check('preamble strip keeps the real content', cleanedPreamble.startsWith('# Studio'), cleanedPreamble.slice(0, 24));
+check('preamble strip keeps inner headings', extractSections(cleanedPreamble).includes('Board view'));
+
+const inlinePreamble = cleanMarkdown('Title: Inline\nMarkdown Content: # Main heading\n\nBody copy that is long enough to survive the cleaning passes intact.');
+check('inline "Markdown Content: # X" keeps the heading', inlinePreamble.startsWith('# Main heading'), inlinePreamble.slice(0, 24));
+
+const midDoc = cleanMarkdown('# Docs\n\nIntro paragraph that is comfortably longer than the ten character dedupe floor.\n\nTitle: this is legitimate body text, not a preamble');
+check('no false strip deeper in the document', /Title: this is legitimate/.test(midDoc));
+
 const longText = `# H\n${'x'.repeat(60000)}`;
 const capped = cleanMarkdown(longText);
 const capTarget = 48000 + '\n\n[Content truncated]'.length;

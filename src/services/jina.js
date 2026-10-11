@@ -31,10 +31,59 @@ export function isValidUrl(rawUrl) {
 }
 
 /**
- * cleanMarkdown(raw) — the six cleaning passes from the spec, in order.
+ * Jina Reader sometimes prefixes a metadata block before the real content,
+ * e.g. for pages that only expose structured headers:
+ *
+ *   Title: Studio — Ship faster
+ *   URL Source: https://studio.example.com
+ *   Markdown Content:
+ *   # Studio
+ *
+ * Left in place, those lines leak into the model's context and can be mistaken
+ * for screen names. This strips a *contiguous* block of such lines at the very
+ * top only — a "Title:" line further down the page is real content and stays.
+ */
+const JINA_PREAMBLE_LINE = /^(title|url source|published time|description|keywords|author|markdown content)\s*:/i;
+
+function stripJinaPreamble(text) {
+  const lines = text.split('\n');
+  let consumed = 0;
+  let inlineRemainder = '';
+  let sawPreamble = false;
+
+  for (let i = 0; i < lines.length && i < 30; i += 1) {
+    const line = lines[i].trim();
+    if (line === '') {
+      consumed = i + 1;
+      continue;
+    }
+    if (!JINA_PREAMBLE_LINE.test(line)) break;
+    sawPreamble = true;
+    consumed = i + 1;
+    // Only "Markdown Content:" can carry real content on the same line
+    // ("Markdown Content: # Real heading"). The value of a Title:/URL Source:/
+    // Description: line is metadata, not page copy, so it is dropped whole.
+    const key = line.slice(0, line.indexOf(':')).trim().toLowerCase();
+    if (key === 'markdown content') {
+      const remainder = line.slice(line.indexOf(':') + 1).trim();
+      if (remainder) {
+        inlineRemainder = remainder;
+        break;
+      }
+    }
+  }
+
+  if (!sawPreamble) return text;
+  const rest = lines.slice(consumed).join('\n').trim();
+  return inlineRemainder ? `${inlineRemainder}\n\n${rest}` : rest;
+}
+
+/**
+ * cleanMarkdown(raw) — the six cleaning passes from the spec, in order,
+ * plus a preamble strip for Jina's metadata block.
  */
 export function cleanMarkdown(raw) {
-  let text = String(raw || '');
+  let text = stripJinaPreamble(String(raw || ''));
 
   // a. Collapse runs of blank lines to at most two.
   text = text.replace(/\n{3,}/g, '\n\n');

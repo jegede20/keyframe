@@ -211,8 +211,37 @@ function isValidUrl(rawUrl) {
     return false;
   }
 }
+function stripJinaPreamble(text) {
+  const lines = text.split("\n");
+  let consumed = 0;
+  let inlineRemainder = "";
+  let sawPreamble = false;
+  for (let i = 0; i < lines.length && i < 30; i += 1) {
+    const line = lines[i].trim();
+    if (line === "") {
+      consumed = i + 1;
+      continue;
+    }
+    if (!JINA_PREAMBLE_LINE.test(line)) break;
+    sawPreamble = true;
+    consumed = i + 1;
+    const key = line.slice(0, line.indexOf(":")).trim().toLowerCase();
+    if (key === "markdown content") {
+      const remainder = line.slice(line.indexOf(":") + 1).trim();
+      if (remainder) {
+        inlineRemainder = remainder;
+        break;
+      }
+    }
+  }
+  if (!sawPreamble) return text;
+  const rest = lines.slice(consumed).join("\n").trim();
+  return inlineRemainder ? `${inlineRemainder}
+
+${rest}` : rest;
+}
 function cleanMarkdown(raw) {
-  let text = String(raw || "");
+  let text = stripJinaPreamble(String(raw || ""));
   text = text.replace(/\n{3,}/g, "\n\n");
   text = text.replace(/we use cookies[\s\S]{0,300}?(accept|agree|ok)/gi, "");
   const seen = /* @__PURE__ */ new Set();
@@ -283,11 +312,12 @@ async function fetchAndCleanJina(url, options = {}) {
     sourceUrl: target
   };
 }
-var JINA_MAX_CHARS;
+var JINA_MAX_CHARS, JINA_PREAMBLE_LINE;
 var init_jina = __esm({
   "src/services/jina.js"() {
     init_errorClassifier();
     JINA_MAX_CHARS = 48e3;
+    JINA_PREAMBLE_LINE = /^(title|url source|published time|description|keywords|author|markdown content)\s*:/i;
   }
 });
 
@@ -1182,6 +1212,26 @@ check(
   (cleanedMessy.match(/Real-time dashboards/g) || []).length === 1
 );
 check("short duplicate lines preserved", (cleanedMessy.match(/^Short$/gm) || []).length === 2);
+var preambled = [
+  "Title: Studio \u2014 Ship faster",
+  "URL Source: https://studio.example.com/",
+  "Published Time: 2026-01-14T09:00:00Z",
+  "Markdown Content:",
+  "# Studio",
+  "",
+  "## Board view",
+  "Drag a card and every change lands in the shared workspace instantly for the team."
+].join("\n");
+var cleanedPreamble = cleanMarkdown2(preambled);
+check("preamble Title: line stripped", !/^Title:/m.test(cleanedPreamble));
+check("preamble URL Source: stripped", !/^URL Source:/m.test(cleanedPreamble));
+check("preamble Markdown Content: marker stripped", !/^Markdown Content:/m.test(cleanedPreamble));
+check("preamble strip keeps the real content", cleanedPreamble.startsWith("# Studio"), cleanedPreamble.slice(0, 24));
+check("preamble strip keeps inner headings", extractSections2(cleanedPreamble).includes("Board view"));
+var inlinePreamble = cleanMarkdown2("Title: Inline\nMarkdown Content: # Main heading\n\nBody copy that is long enough to survive the cleaning passes intact.");
+check('inline "Markdown Content: # X" keeps the heading', inlinePreamble.startsWith("# Main heading"), inlinePreamble.slice(0, 24));
+var midDoc = cleanMarkdown2("# Docs\n\nIntro paragraph that is comfortably longer than the ten character dedupe floor.\n\nTitle: this is legitimate body text, not a preamble");
+check("no false strip deeper in the document", /Title: this is legitimate/.test(midDoc));
 var longText = `# H
 ${"x".repeat(6e4)}`;
 var capped = cleanMarkdown2(longText);

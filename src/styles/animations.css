@@ -4,7 +4,14 @@
    so that `reduce` disables ALL motion. Rule 8 — never violate.
    ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Base: define animated classes as no-ops first so reduced motion is final state */
+/* Base: define animated classes as no-ops first so reduced motion is final state.
+   The toast progress bar is decorative timing feedback, so it is hidden
+   entirely rather than frozen in place. */
+.kf-toast-progress {
+  display: none;
+}
+
+
 .kf-anim-hero,
 .kf-anim-glow,
 .kf-anim-fade,
@@ -17,8 +24,6 @@
 .kf-anim-accordion,
 .kf-anim-collapse,
 .kf-anim-spin,
-.kf-anim-drawer,
-.kf-press,
 .kf-hover-lift {
   animation: none;
 }
@@ -156,32 +161,7 @@
       transform: none;
     }
   }
-  @keyframes kfSlideInLeft {
-    from {
-      transform: translateX(-100%);
-    }
-    to {
-      transform: none;
-    }
-  }
-  @keyframes kfSlideInUp {
-    from {
-      transform: translateY(100%);
-    }
-    to {
-      transform: none;
-    }
-  }
   .kf-anim-slide-right {
-    animation: kfSlideInRight 250ms ease-out both;
-  }
-  .kf-anim-slide-left {
-    animation: kfSlideInLeft 250ms ease-out both;
-  }
-  .kf-anim-slide-up {
-    animation: kfSlideInUp 250ms ease-out both;
-  }
-  .kf-anim-drawer {
     animation: kfSlideInRight 250ms ease-out both;
   }
 
@@ -247,13 +227,6 @@
     transform: translateY(-2px);
   }
 
-  /* ── Press feedback ──────────────────────────────────────────────────── */
-  .kf-press {
-    transition: transform 50ms ease;
-  }
-  .kf-press:active {
-    transform: scale(0.98);
-  }
 
   /* ── Trust bar / bento scroll pulse ──────────────────────────────────── */
   @keyframes kfPulseOnce {
@@ -293,23 +266,12 @@
       transform: scaleX(0);
     }
   }
-  .kf-anim-toast-progress {
+  .kf-toast-progress {
+    display: block;
     animation: kfToastProgress linear both;
     transform-origin: left center;
   }
 
-  /* ── Offline → online flash ──────────────────────────────────────────── */
-  @keyframes kfFlash {
-    0% {
-      box-shadow: 0 0 0 0 rgba(0, 229, 160, 0.45);
-    }
-    100% {
-      box-shadow: 0 0 0 18px rgba(0, 229, 160, 0);
-    }
-  }
-  .kf-anim-flash {
-    animation: kfFlash 700ms ease-out both;
-  }
 
   /* ── Paste pulse on URL field ───────────────────────────────────────── */
   @keyframes kfPastePulse {

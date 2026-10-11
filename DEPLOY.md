@@ -83,8 +83,12 @@ npm run build
 python3 tools/pwa-check.py            # 27 checks, serves dist/ itself
 
 # 3. pipeline (no browser needed)
-node tools/run-pipeline-test.mjs      # 79 checks
+node tools/run-pipeline-test.mjs      # 86 checks
 GROQ_API_KEY=gsk_… node tools/run-pipeline-test.mjs   # + live Groq checks
+
+# 4. the one live end-to-end suite (spends real quota — run before a release)
+python3 tools/live-check.py https://tailwindcss.com   # 11 checks
+node tools/css-audit.mjs                              # stylesheet coverage
 ```
 
 `tools/pwa-check.py` launches Chrome through `/tmp/chrome-offline.sh`, a wrapper

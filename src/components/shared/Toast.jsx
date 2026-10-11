@@ -12,7 +12,12 @@ const ACCENTS = {
   info: 'var(--accent-primary)',
 };
 
-/** Section 8.7 — one toast. `leaving` drives the slide-out animation. */
+/**
+ * Section 8.7 — one toast. `leaving` drives the slide-out animation; the
+ * underline is an auto-dismiss progress bar whose duration matches the toast's
+ * own TTL. It is decorative only (aria-hidden, 2px) and hidden entirely under
+ * prefers-reduced-motion — see .kf-toast-progress in animations.css.
+ */
 export default function Toast({ toast, onDismiss, leaving = false }) {
   const Icon = ICONS[toast.type] || Info;
 
@@ -22,6 +27,8 @@ export default function Toast({ toast, onDismiss, leaving = false }) {
       aria-live="polite"
       className={leaving ? 'kf-anim-toast-out' : 'kf-anim-toast-in'}
       style={{
+        position: 'relative',
+        overflow: 'hidden',
         display: 'flex',
         alignItems: 'flex-start',
         gap: 10,
@@ -49,6 +56,22 @@ export default function Toast({ toast, onDismiss, leaving = false }) {
       >
         <X size={14} />
       </button>
+
+      <span
+        aria-hidden="true"
+        className="kf-toast-progress"
+        style={{
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: 2,
+          transformOrigin: 'left center',
+          background: ACCENTS[toast.type] || ACCENTS.info,
+          opacity: 0.55,
+          animationDuration: `${toast.duration || 3000}ms`,
+        }}
+      />
     </div>
   );
 }
