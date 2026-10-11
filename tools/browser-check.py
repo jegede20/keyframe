@@ -113,8 +113,25 @@ async def main():
         check("bento features rendered", await evaluate(tab, "document.body.innerText.includes('Shot-by-Shot Script')"))
         check("output preview rendered", await evaluate(tab, "document.body.innerText.includes('This is what you get back')"))
         check("faq rendered", await evaluate(tab, "document.body.innerText.includes('Is Keyframe really free?')"))
-        check("footer rendered", await evaluate(tab, "document.body.innerText.includes('Paste a link, shoot the demo.')"))
+        check(
+            "footer rendered",
+            await evaluate(
+                tab,
+                """(() => {
+                  const base = document.querySelector('.kf-footer-base');
+                  return !!base
+                    && document.body.innerText.includes('Start a script')
+                    && document.body.innerText.includes('No tracking');
+                })()""",
+            ),
+        )
         check("footer has no GitHub link", await evaluate(tab, "![...document.querySelectorAll('footer a')].some(a => /github/i.test(a.textContent))"))
+        # The 780px default viewport is below the desktop breakpoint: section
+        # links belong in the drawer, not stacked into the header.
+        check(
+            "header shows no section links below 1200px",
+            await evaluate(tab, """getComputedStyle(document.querySelector('.kf-nav-center')).display === 'none'"""),
+        )
         check("no console errors on load", len(console_errors) == 0, "; ".join(console_errors[:2]))
 
         await screenshot(tab, "01-landing-desktop.png")
@@ -447,18 +464,36 @@ async def main():
         )
         await tab.send_command("Page.navigate", {"url": URL})
         await asyncio.sleep(3)
-        check("bottom bar visible on mobile", await evaluate(tab, """(() => { const el = document.querySelector('.kf-bottombar'); return !!el && getComputedStyle(el).display !== 'none'; })()"""))
         check("hamburger visible on mobile", await evaluate(tab, """(() => { const el = document.querySelector('.kf-hamburger'); return !!el && getComputedStyle(el).display !== 'none'; })()"""))
         check("desktop cta hidden on mobile", await evaluate(tab, """(() => { const el = document.querySelector('.kf-cta-desktop'); return !!el && getComputedStyle(el).display === 'none'; })()"""))
+        # The phone header is logo + hamburger only: no section links, no
+        # history/settings icons (everything lives in the drawer).
         check(
-            "touch targets ≥44px (bottom bar)",
+            "header keeps only logo + hamburger on a phone",
             await evaluate(
                 tab,
                 """(() => {
-                  const btns = [...document.querySelectorAll('.kf-bottombar button')];
-                  return btns.length > 0 && btns.every(b => b.getBoundingClientRect().height >= 44);
+                  const hidden = el => !el || getComputedStyle(el).display === 'none';
+                  const header = document.querySelector('header');
+                  const visible = [...header.querySelectorAll('a,button')].filter(el => getComputedStyle(el).display !== 'none' && el.getBoundingClientRect().width > 0);
+                  return hidden(document.querySelector('.kf-nav-center'))
+                    && hidden(document.querySelector('.kf-nav-icons'))
+                    && visible.length === 2
+                    && header.scrollWidth <= window.innerWidth;
                 })()""",
             ),
+        )
+        check(
+            "hamburger touch target ≥44px",
+            await evaluate(
+                tab,
+                """(() => { const b = document.querySelector('.kf-hamburger'); const r = b.getBoundingClientRect(); return r.width >= 44 && r.height >= 44; })()""",
+            ),
+        )
+        # The sticky Generate bar is a workspace control — never on the landing.
+        check(
+            "no sticky action bar on the landing",
+            await evaluate(tab, "!document.querySelector('.kf-bottombar')"),
         )
         await screenshot(tab, "05-mobile-landing.png")
 
@@ -503,10 +538,11 @@ async def main():
             bd.get("coversHero") is False and bd.get("inside") is True,
             f"{bd.get('bottomGap')}px above the viewport bottom",
         )
+        # No action bar on the landing, so the banner takes the low 24px band.
         check(
-            "install banner clears the mobile action bar",
-            bd.get("hitsBar") is False and abs((bd.get("bottomGap") or 0) - 76) <= 2,
-            f"{bd.get('gapAboveBar')}px clear of the bar (76px band)",
+            "install banner sits in the 24px band on the landing",
+            bd.get("hitsBar") is False and abs((bd.get("bottomGap") or 0) - 24) <= 2,
+            f"{bd.get('bottomGap')}px above the viewport bottom",
         )
         # …and drops to the 24px band once the mobile bar hides (≥768px)
         await tab.send_command(
@@ -528,24 +564,68 @@ async def main():
             dk.get("shown") is True and dk.get("fixed") is True and abs((dk.get("gap") or 0) - 24) <= 2,
             f"{dk.get('gap')}px",
         )
-        # back to mobile, then dismiss through the real control so nothing
-        # downstream inherits a floating overlay
+        # back to mobile, open the drawer, and walk into the workspace through
+        # it — there the sticky action bar exists and the banner must clear it
         await tab.send_command(
             "Emulation.setDeviceMetricsOverride",
             {"width": 390, "height": 844, "deviceScaleFactor": 3, "mobile": True},
         )
-        await asyncio.sleep(0.3)
+        await asyncio.sleep(0.4)
+        await evaluate(tab, """document.querySelector('.kf-hamburger').click()""")
+        await asyncio.sleep(0.5)
+        check("hamburger drawer opens", await evaluate(tab, "document.body.innerText.includes('Menu') && document.body.innerText.includes('How It Works')"))
+        check(
+            "drawer carries the header's controls",
+            await evaluate(
+                tab,
+                """(() => {
+                  const t = document.body.innerText;
+                  return t.includes('Script History') && t.includes('Settings') && t.includes('Get Started');
+                })()""",
+            ),
+        )
+        await screenshot(tab, "06-mobile-menu.png")
+        await evaluate(
+            tab,
+            """(() => { const b = [...document.querySelectorAll('nav[aria-label="Menu"] button')].find(x => x.textContent.includes('Get Started')); b.click(); return true; })()""",
+        )
+        await asyncio.sleep(1.0)
+        check("drawer's Get Started enters the workspace", await evaluate(tab, "!!document.getElementById('kf-main-url')"))
+        check("bottom bar returns in the workspace", await evaluate(tab, """(() => { const el = document.querySelector('.kf-bottombar'); return !!el && getComputedStyle(el).display !== 'none'; })()"""))
+        check(
+            "touch targets ≥44px (bottom bar)",
+            await evaluate(
+                tab,
+                """(() => {
+                  const btns = [...document.querySelectorAll('.kf-bottombar button')];
+                  return btns.length > 0 && btns.every(b => b.getBoundingClientRect().height >= 44);
+                })()""",
+            ),
+        )
+        raised = await evaluate(
+            tab,
+            """(() => {
+              const b = document.querySelector('.kf-install-banner');
+              const bar = document.querySelector('.kf-bottombar');
+              if (!b || !bar || getComputedStyle(bar).display === 'none') return { ok: false };
+              const rb = b.getBoundingClientRect(), rc = bar.getBoundingClientRect();
+              const overlaps = rb.top < rc.bottom && rc.top < rb.bottom && rb.left < rc.right && rc.left < rb.right;
+              return { ok: true, gap: Math.round(window.innerHeight - rb.bottom), hitsBar: overlaps, clear: Math.round(rc.top - rb.bottom) };
+            })()""",
+        )
+        ri = raised or {}
+        check(
+            "install banner rises to the 76px band above the action bar",
+            ri.get("ok") is True and ri.get("hitsBar") is False and abs((ri.get("gap") or 0) - 76) <= 2,
+            f"{ri.get('gap')}px band, {ri.get('clear')}px clear of the bar",
+        )
+        # dismiss through the real control so nothing downstream inherits a
+        # floating overlay
         await evaluate(
             tab,
             """(() => { const b = document.querySelector('.kf-install-banner button[aria-label="Dismiss install banner"]'); if (b) b.click(); return true; })()""",
         )
         await asyncio.sleep(0.3)
-
-        # hamburger drawer
-        await evaluate(tab, """document.querySelector('.kf-hamburger').click()""")
-        await asyncio.sleep(0.5)
-        check("hamburger drawer opens", await evaluate(tab, "document.body.innerText.includes('Menu') && document.body.innerText.includes('How It Works')"))
-        await screenshot(tab, "06-mobile-menu.png")
 
         # ── Clear All Data (destructive, so it runs last) ────────────
         print("\n11. Clear All Data")

@@ -1,10 +1,16 @@
 import { useState } from 'react';
 import { ArrowRight, Link2 } from 'lucide-react';
 import { isValidUrl } from '../../services/jina.js';
-import { LogoMark } from '../shared/Logo.jsx';
+import { LogoLockup } from '../shared/Logo.jsx';
+
+const FOOTER_LINKS = [
+  { href: '#how-it-works', label: 'How It Works' },
+  { href: '#features', label: 'Features' },
+  { href: '#faq', label: 'FAQ' },
+];
 
 /** Section 8.2 — closing CTA (repeats the hero input) + footer. */
-export default function Footer({ values, onChange, onGenerate }) {
+export default function Footer({ values, onChange, onGenerate, onStart }) {
   const [pulse, setPulse] = useState(false);
   const url = values.url || '';
   const urlValid = isValidUrl(url);
@@ -88,31 +94,82 @@ export default function Footer({ values, onChange, onGenerate }) {
       </section>
 
       <footer
+        className="kf-footer"
         style={{
           borderTop: '1px solid var(--border-subtle)',
           background: 'var(--bg-primary)',
-          padding: '22px 20px',
-          paddingBottom: 'calc(22px + 76px)', // clears the mobile bottom bar
+          padding: '32px 20px 28px',
         }}
       >
-        <div className="kf-container kf-footer-inner">
-        >
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <LogoMark size={15} />
-            <strong style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-display)' }}>Keyframe</strong>
-            <span>· Paste a link, shoot the demo.</span>
-          </span>
+        <div className="kf-container kf-footer-grid">
+          <div className="kf-footer-brand">
+            <LogoLockup size={22} fontSize={19} />
+            <p className="kf-small" style={{ color: 'var(--text-tertiary)', marginTop: 10, maxWidth: 320 }}>
+              Paste a link, get a shot-by-shot demo script. Everything runs in your
+              browser — no account, no server, no uploads.
+            </p>
+          </div>
 
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 14 }}>
-            <span>No accounts</span>
-            <span aria-hidden="true">·</span>
-            <span>Nothing leaves your device</span>
-          </span>
+          <nav className="kf-footer-nav" aria-label="Footer">
+            {FOOTER_LINKS.map((link) => (
+              <a key={link.href} href={link.href} className="kf-footer-link">
+                {link.label}
+              </a>
+            ))}
+            <button type="button" className="kf-footer-link kf-footer-link--action" onClick={() => onStart?.()}>
+              Start a script <ArrowRight size={14} aria-hidden="true" />
+            </button>
+          </nav>
+        </div>
+
+        <div className="kf-container kf-footer-base">
+          <span>No accounts · No tracking · Nothing leaves your device</span>
+          <span aria-hidden="true" className="kf-footer-dot">·</span>
+          <span>© {new Date().getFullYear()} Keyframe</span>
         </div>
 
         <style>{`
+          .kf-footer-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+            align-items: flex-start;
+            justify-content: space-between;
+          }
+          .kf-footer-brand { display: flex; flex-direction: column; }
+          .kf-footer-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            align-items: flex-start;
+          }
+          .kf-footer-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-family: var(--font-body);
+            font-size: 14px;
+            color: var(--text-secondary);
+            padding: 8px 0;
+            min-height: 44px;
+            transition: color 150ms ease;
+          }
+          .kf-footer-link:hover { color: var(--accent-primary); }
+          .kf-footer-link--action { font-weight: 500; color: var(--text-primary); }
+          .kf-footer-base {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            margin-top: 24px;
+            padding-top: 18px;
+            border-top: 1px solid var(--border-subtle);
+            font-family: var(--font-body);
+            font-size: 12.5px;
+            color: var(--text-tertiary);
+          }
           @media (min-width: 768px) {
-            footer { padding-bottom: 22px !important; }
+            .kf-footer-nav { flex-direction: row; gap: 22px; align-items: center; }
           }
         `}</style>
       </footer>

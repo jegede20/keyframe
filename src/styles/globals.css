@@ -140,34 +140,30 @@ body {
     position: relative;
   }
   /* Install banner — floats (so it never pushes the hero down, which was the
-     whole Layout Shift score) but anchored under the toast band rather than
-     over the headline: same 76px offset as .kf-toast-container, which clears
-     the 64px mobile action bar by 12px. Toasts (z 400) sit above it (z 180). */
+     whole Layout Shift score) and keeps clear of the hero headline. The
+     landing page has no sticky action bar, so the banner sits on the 24px
+     band there; --raised moves it to the 76px toast band only while the
+     workspace's mobile action bar is present (12px clearance above it).
+     Toasts (z 400) sit above it (z 180). */
   .kf-install-banner {
     position: fixed;
     left: 50%;
     transform: translateX(-50%);
-    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(24px + env(safe-area-inset-bottom, 0px));
     width: calc(100% - 32px);
     max-width: 720px;
     z-index: 180;
   }
+  .kf-install-banner--raised {
+    bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
   @media (min-width: 768px) {
     /* the mobile action bar is hidden from 768px up, so the banner drops */
-    .kf-install-banner {
+    .kf-install-banner--raised {
       bottom: 24px;
     }
   }
-  .kf-footer-inner {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    font-family: var(--font-body);
-    font-size: 13px;
-    color: var(--text-tertiary);
-  }
+
 
   /* ── Surfaces ───────────────────────────────────────────────────────── */
   .kf-card {

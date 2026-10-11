@@ -42,7 +42,7 @@ Last full run: **2026-10-11**, all suites green (numbers below are from that run
 | Suite | What it is | Dev `:5173` | Prod `:4173` |
 | --- | --- | --- | --- |
 | `tools/pipeline-test.mjs` | 90 checks, no browser: cleaning passes, prompt assembly, timing, parser repair, error classification, stubbed truncation | 90 pass / 5 skipped (live-only) | — |
-| `tools/browser-check.py` | 59 checks of the real UI, incl. IndexedDB round-trip, prune at the 50-record cap, install-banner geometry, Clear All Data | 59/59 | 44/44 + 12 skips |
+| `tools/browser-check.py` | 66 checks of the real UI, incl. the responsive header, IndexedDB round-trip, prune at the 50-record cap, install-banner geometry, Clear All Data | 66/66 | 51/51 + 12 skips |
 | `tools/e2e-check.py` | 59 checks with mocked Jina + Groq: full generation, cancel, clipboard, history, rate limits, offline, cut-short, incomplete | 59/59 | 59/59 |
 | `tools/motion-audit.py` | 14 checks: every element, both motion states | 14/14 | 14/14 |
 | `tools/a11y-check.py` | axe-core 4.10.2 across 7 surfaces, per theme | 0 violations (dark, light) | — |

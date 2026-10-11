@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { History, Menu, Settings, X } from 'lucide-react';
 import { LogoLockup } from '../shared/Logo.jsx';
+import { scrollBehavior } from '../../utils/motion.js';
 
 const NAV_LINKS = [
   { href: '#how-it-works', label: 'How It Works' },
@@ -10,8 +11,14 @@ const NAV_LINKS = [
 
 /**
  * Section 8.1 — sticky 64px glass navbar.
- * Desktop: logo · center links · history/settings/CTA.
- * Mobile: logo · history · settings · hamburger drawer.
+ * ≥1200px: logo · section links · history/settings · Get Started.
+ * 768–1199px: logo · history/settings · hamburger (section links live in the drawer).
+ * <768px: logo · hamburger only — everything sits in the drawer, so the
+ *         header never crowds the phone.
+ *
+ * Visibility lives entirely in the stylesheet below: an inline `display` on
+ * the nav would beat the media queries and stack every link into the mobile
+ * header, which is exactly what used to happen.
  */
 export default function Navbar({ onOpenHistory, onOpenSettings, onGetStarted, historyCount = 0 }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -69,14 +76,14 @@ export default function Navbar({ onOpenHistory, onOpenSettings, onGetStarted, hi
           className="kf-container-wide"
           style={{ height: '100%', display: 'flex', alignItems: 'center', gap: 8 }}
         >
-          {/* Logo */}
+          {/* Logo — back to the top (never resets the workspace) */}
           <a
             href="#top"
             onClick={(e) => {
               e.preventDefault();
-              onGetStarted?.();
+              window.scrollTo({ top: 0, behavior: scrollBehavior() });
             }}
-            aria-label="Keyframe home"
+            aria-label="Keyframe home — back to top"
             style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginRight: 'auto' }}
           >
             <LogoLockup size={22} fontSize={20} />
@@ -86,7 +93,7 @@ export default function Navbar({ onOpenHistory, onOpenSettings, onGetStarted, hi
           <nav
             className="kf-nav-center"
             aria-label="Sections"
-            style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+            style={{ alignItems: 'center', gap: 4 }}
           >
             {NAV_LINKS.map((link) => (
               <a key={link.href} href={link.href} style={linkStyle} className="kf-nav-link">
@@ -97,48 +104,50 @@ export default function Navbar({ onOpenHistory, onOpenSettings, onGetStarted, hi
 
           {/* Right cluster */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <button
-              type="button"
-              className="kf-icon-btn"
-              onClick={onOpenHistory}
-              aria-label={`Script history${historyCount ? ` (${historyCount})` : ''}`}
-              title="Script history"
-              style={{ position: 'relative' }}
-            >
-              <History size={19} />
-              {historyCount > 0 && (
-                <span
-                  aria-hidden="true"
-                  style={{
-                    position: 'absolute',
-                    top: 6,
-                    right: 5,
-                    minWidth: 16,
-                    height: 16,
-                    padding: '0 4px',
-                    borderRadius: 999,
-                    background: 'var(--accent-primary)',
-                    color: '#fff',
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 10,
-                    lineHeight: '16px',
-                    textAlign: 'center',
-                  }}
-                >
-                  {historyCount > 99 ? '99+' : historyCount}
-                </span>
-              )}
-            </button>
+            <div className="kf-nav-icons">
+              <button
+                type="button"
+                className="kf-icon-btn"
+                onClick={onOpenHistory}
+                aria-label={`Script history${historyCount ? ` (${historyCount})` : ''}`}
+                title="Script history"
+                style={{ position: 'relative' }}
+              >
+                <History size={19} />
+                {historyCount > 0 && (
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      position: 'absolute',
+                      top: 6,
+                      right: 5,
+                      minWidth: 16,
+                      height: 16,
+                      padding: '0 4px',
+                      borderRadius: 999,
+                      background: 'var(--accent-primary)',
+                      color: '#fff',
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 10,
+                      lineHeight: '16px',
+                      textAlign: 'center',
+                    }}
+                  >
+                    {historyCount > 99 ? '99+' : historyCount}
+                  </span>
+                )}
+              </button>
 
-            <button
-              type="button"
-              className="kf-icon-btn"
-              onClick={onOpenSettings}
-              aria-label="Settings"
-              title="Settings"
-            >
-              <Settings size={19} />
-            </button>
+              <button
+                type="button"
+                className="kf-icon-btn"
+                onClick={onOpenSettings}
+                aria-label="Settings"
+                title="Settings"
+              >
+                <Settings size={19} />
+              </button>
+            </div>
 
             <button
               type="button"
@@ -162,14 +171,19 @@ export default function Navbar({ onOpenHistory, onOpenSettings, onGetStarted, hi
         </div>
 
         <style>{`
+          /* Phones get logo + hamburger only — every control lives in the drawer. */
           .kf-nav-center { display: none; }
+          .kf-nav-icons { display: none; align-items: center; gap: 2px; }
           .kf-cta-desktop { display: none; }
           .kf-hamburger { display: inline-flex; }
           .kf-nav-link:hover { color: var(--text-primary) !important; background: var(--bg-surface-hover); }
+          @media (min-width: 768px) {
+            .kf-nav-icons { display: flex; }
+          }
           @media (min-width: 1200px) {
-            .kf-nav-center { display: flex !important; margin-right: auto; }
-            .kf-cta-desktop { display: inline-flex !important; }
-            .kf-hamburger { display: none !important; }
+            .kf-nav-center { display: flex; margin-right: auto; }
+            .kf-cta-desktop { display: inline-flex; }
+            .kf-hamburger { display: none; }
           }
         `}</style>
       </header>
@@ -259,6 +273,18 @@ export default function Navbar({ onOpenHistory, onOpenSettings, onGetStarted, hi
             >
               Get Started →
             </button>
+
+            <p
+              className="kf-caption"
+              style={{
+                marginTop: 'auto',
+                paddingTop: 20,
+                color: 'var(--text-tertiary)',
+                lineHeight: 1.6,
+              }}
+            >
+              Free forever · No account · Scripts stay on this device.
+            </p>
           </nav>
         </div>
       )}

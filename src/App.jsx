@@ -466,6 +466,7 @@ function Shell({ settings, updateSetting, history, isOnline, pwa, appState }) {
       <main style={{ flex: 1, paddingBottom: 96 }}>
       {pwa.shouldShowInstall && !installBannerHidden && (
         <InstallPrompt
+          raised={!showLanding}
           isIOSManual={pwa.isIOSManual}
           onInstall={pwa.promptInstall}
           onDismiss={() => {
@@ -538,7 +539,12 @@ function Shell({ settings, updateSetting, history, isOnline, pwa, appState }) {
             <BentoGrid />
             <OutputPreview />
             <FAQ />
-            <Footer values={input} onChange={handleFieldChange} onGenerate={() => runGeneration()} />
+            <Footer
+              values={input}
+              onChange={handleFieldChange}
+              onGenerate={() => runGeneration()}
+              onStart={handleGetStarted}
+            />
           </>
         )}
 
@@ -678,17 +684,21 @@ function Shell({ settings, updateSetting, history, isOnline, pwa, appState }) {
         />
       )}
 
-      <BottomBar
-        state={state}
-        onGenerate={() => runGeneration()}
-        onCancel={cancelGeneration}
-        onCopyAll={copyAll}
-        onNewScript={newScript}
-        onRetry={() => runGeneration()}
-        onEditInputs={() => reset()}
-        canGenerate={canGenerate}
-        copied={copiedAll}
-      />
+      {/* The sticky action bar is a workspace control — the landing page runs
+          its actions from the hero and the closing CTA, so it stays out. */}
+      {!showLanding && (
+        <BottomBar
+          state={state}
+          onGenerate={() => runGeneration()}
+          onCancel={cancelGeneration}
+          onCopyAll={copyAll}
+          onNewScript={newScript}
+          onRetry={() => runGeneration()}
+          onEditInputs={() => reset()}
+          canGenerate={canGenerate}
+          copied={copiedAll}
+        />
+      )}
 
       <ToastContainer toasts={toasts} onDismiss={removeToast} />
     </div>

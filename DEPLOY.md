@@ -122,12 +122,12 @@ bash tools/fetch-chrome-libs.sh       # extracts the few system libs Chrome need
 
 # 1. dev server for the interaction suites
 npm run dev -- --port 5173 --host 0.0.0.0
-python3 tools/browser-check.py        # 59 checks
+python3 tools/browser-check.py        # 66 checks
 python3 tools/e2e-check.py            # 59 checks (mocked APIs)
 
 # 1b. …or the same suites against the built bundle (what actually deploys)
 npm run build && npm run preview -- --port 4173 &
-KF_BASE=http://localhost:4173 python3 tools/browser-check.py   # 44 checks + 12 dev-only skips
+KF_BASE=http://localhost:4173 python3 tools/browser-check.py   # 51 checks + 12 dev-only skips
 KF_BASE=http://localhost:4173 python3 tools/e2e-check.py       # 59 checks
 python3 tools/a11y-check.py           # axe-core, dark theme
 KF_THEME=light python3 tools/a11y-check.py

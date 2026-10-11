@@ -133,8 +133,8 @@ async def main():
             await ev(tab, """getComputedStyle(document.querySelector('.kf-hamburger')).display === 'none'"""),
         )
         check(
-            "bottom bar hidden",
-            await ev(tab, """getComputedStyle(document.querySelector('.kf-bottombar')).display === 'none'"""),
+            "no sticky action bar on the landing",
+            await ev(tab, """!document.querySelector('.kf-bottombar')"""),
         )
         resolved = await ev(tab, "document.documentElement.getAttribute('data-theme')")
         system_dark = await ev(tab, "window.matchMedia('(prefers-color-scheme: dark)').matches")

@@ -4,7 +4,7 @@ import { Download, Share, X } from 'lucide-react';
 /**
  * Section 8.7 — install banner (Chrome/Android) + manual iOS instructions.
  */
-export default function InstallPrompt({ isIOSManual, onInstall, onDismiss, onToast }) {
+export default function InstallPrompt({ isIOSManual, onInstall, onDismiss, onToast, raised = false }) {
   const [busy, setBusy] = useState(false);
 
   const install = async () => {
@@ -19,7 +19,7 @@ export default function InstallPrompt({ isIOSManual, onInstall, onDismiss, onToa
     <div
       role="region"
       aria-label="Install Keyframe"
-      className="kf-anim-fade kf-install-banner"
+      className={`kf-anim-fade kf-install-banner${raised ? ' kf-install-banner--raised' : ''}`}
       style={{
         padding: '12px 14px',
         display: 'flex',
