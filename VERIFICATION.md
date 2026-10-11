@@ -35,7 +35,7 @@ Last full run: **2026-10-11**, all suites green (numbers below are from that run
 | axe-core | 0 serious/critical | **0 violations at any impact**, dark **and** light | PASS |
 | Largest Contentful Paint | < 2.5 s | 2.27 s | PASS |
 | Cumulative Layout Shift | < 0.1 | 0.000 | PASS |
-| Total Blocking Time | — (tracked) | 145 ms | — |
+| Total Blocking Time | — (tracked) | 145–457 ms across runs (shared-CPU noise) | — |
 
 ## The battery
 
@@ -82,7 +82,8 @@ python3 tools/live-check.py             # spends real free-tier quota
 
 ## Known limits
 
-* **Lighthouse composite scores are noisy on a shared CPU** (86–97 observed):
+* **Lighthouse composite scores are noisy on a shared CPU** (86–97 observed;
+  TBT swings 145–457 ms between runs on the same build):
   compare LCP / CLS / TBT and the enforced gates, not the single perf number.
 * **Live runs share one free tier**: a `429` mid-run is handled behaviour, not
   a defect. `live-check` is a pre-release check, not part of the routine loop.
