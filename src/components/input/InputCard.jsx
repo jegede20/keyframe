@@ -21,6 +21,7 @@ export default function InputCard({
   heading = '🎬 What are we demoing?',
   idPrefix = 'kf-main',
   buttonLabel = 'Generate Script',
+  submitClass = '',
 }) {
   const [urlTouched, setUrlTouched] = useState(false);
   const [pastePulse, setPastePulse] = useState(false);
@@ -195,7 +196,7 @@ export default function InputCard({
           {/* Generate */}
           <button
             type="submit"
-            className={`kf-btn kf-btn--primary kf-btn--lg kf-generate ${canGenerate ? 'kf-anim-glow' : ''}`}
+            className={`kf-btn kf-btn--primary kf-btn--lg kf-generate ${canGenerate ? 'kf-anim-glow' : ''} ${submitClass}`.trim()}
             style={{ width: '100%', marginTop: 18 }}
             disabled={!canGenerate}
             aria-disabled={!canGenerate}

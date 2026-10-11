@@ -596,6 +596,12 @@ function Shell({ settings, updateSetting, history, isOnline, pwa, appState }) {
                 onGenerate={() => runGeneration()}
                 busy={state === STATES.LOADING}
                 dimmed={state === STATES.LOADING}
+                /* On phones the sticky action bar already offers Generate /
+                   Cancel / Try Again for this state, so the card's own submit
+                   is the same action twice. It stays when editing, where the
+                   bar shows Copy All / New Script instead and this button is
+                   the only way to submit the updated brief. */
+                submitClass="kf-dupe-submit"
               />
             )}
 

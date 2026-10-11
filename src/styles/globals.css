@@ -128,6 +128,13 @@ body {
   /* ── Results-visible summary bar (InputSummary) ──────────────────────
      URL shrinks (ellipsis); meta and actions never do. On phones the meta
      takes its own row so nothing can overflow the card. */
+  /* One primary action per screen on phones: the input card's submit is the
+     sticky bar's Generate / Cancel / Try Again for the same state, so it is
+     hidden there. `.kf-hide-on-phones` is the generic form. */
+  @media (max-width: 767px) {
+    .kf-dupe-submit,
+    .kf-hide-on-phones { display: none !important; }
+  }
   /* ── Update dropdown (UpdateBanner) ──────────────────────────────────
      Anchored under the fixed 64px header, never in the page flow. Right
      aligned on desktop; full width (with margins) on phones, where the two

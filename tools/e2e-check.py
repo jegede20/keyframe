@@ -491,6 +491,37 @@ async def main():
             await ev(tab, "getComputedStyle(document.querySelector('.kf-tip')).display === 'block'"),
         )
 
+        # The de-duplication is state-aware: while editing, the summary card
+        # holds the only submit ("Regenerate Script") because the bar shows
+        # Copy All / New Script instead — so it must stay visible.
+        await ev(tab, """(() => { const b=[...document.querySelectorAll('button')].find(x=>(x.getAttribute('aria-label')||'')==='Edit inputs'); b.click(); return true; })()""")
+        await asyncio.sleep(0.8)
+        editing = await ev(
+            tab,
+            """(() => {
+              const vis = el => { const s = getComputedStyle(el); const r = el.getBoundingClientRect();
+                return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0 && r.height > 0; };
+              return JSON.stringify([...document.querySelectorAll('button[type=submit]')].filter(vis).map(b => b.textContent.replace(/\\s+/g,' ').trim()));
+            })()""",
+        )
+        check(
+            "editing on a phone keeps its only submit visible",
+            "Regenerate Script" in (json.loads(editing or "[]")),
+            str(editing),
+        )
+        await ev(
+            tab,
+            """(() => { const f=[...document.querySelectorAll('form')].find(f=>f.querySelector('#kf-main-features')); f.querySelector('button[type=submit]').click(); return true; })()""",
+        )
+        for _ in range(40):
+            await asyncio.sleep(0.5)
+            if await ev(tab, """!!document.querySelector('[role=tablist][aria-label="Script output sections"]')"""):
+                break
+        check(
+            "the edited brief regenerates from the card's submit",
+            await ev(tab, """!!document.querySelector('[role=tablist][aria-label="Script output sections"]')"""),
+        )
+
         # back to desktop for the rest of the run
         await tab.send_command(
             "Emulation.setDeviceMetricsOverride",

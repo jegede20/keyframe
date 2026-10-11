@@ -602,6 +602,27 @@ async def main():
                 })()""",
             ),
         )
+        # One primary action per screen on a phone: the input card's own
+        # submit is the same action the sticky bar offers for this state.
+        dupgen = await evaluate(
+            tab,
+            """(() => {
+              const vis = el => { const s = getComputedStyle(el); const r = el.getBoundingClientRect();
+                return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0 && r.height > 0; };
+              const gen = [...document.querySelectorAll('button')].filter(b => vis(b) && /generate script/i.test(b.textContent));
+              const cardSubmit = document.querySelector('.kf-card button[type=submit]');
+              return JSON.stringify({
+                count: gen.length,
+                inBar: gen.length > 0 && gen.every(b => !!b.closest('.kf-bottombar')),
+                cardHidden: !!cardSubmit && !vis(cardSubmit),
+              });
+            })()""",
+        )
+        dg = json.loads(dupgen or "{}")
+        check("exactly one Generate action on a phone", dg.get("count") == 1, f"{dg.get('count')} visible")
+        check("the phone's Generate lives in the sticky bar", dg.get("inBar") is True)
+        check("the input card's duplicate submit is hidden on a phone", dg.get("cardHidden") is True)
+
         raised = await evaluate(
             tab,
             """(() => {
