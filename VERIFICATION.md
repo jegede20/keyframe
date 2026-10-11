@@ -67,6 +67,25 @@ Last full run: **2026-10-11**, all suites green (numbers below are from that run
   or explains the wait), `401` (service-side key message, nothing to re-enter),
   `413` (momentary edge rejection — retryable), `finish_reason: "length"`.
 
+## The deployed instance
+
+Everything above is about a local build; the numbers also hold on the
+deployment that actually ships — `KF_BASE=https://keyframe-nine.vercel.app`:
+
+* `e2e-check.py` **59/59** against the Vercel deployment (mocked Jina + Groq:
+  full generation, cancel, offline path, rate limits, history round-trip).
+* `live-check.py` **11/11** against the Vercel deployment — a real `r.jina.ai`
+  fetch and a real Groq generation with the bundled key, driven from a browser,
+  no proxy in between. That is Rules 3, 4 and 6 proven end to end on the host.
+* `/sw.js` answers `cache-control: no-cache, no-store, must-revalidate` on
+  `vercel.app` — the `vercel.json` mirror of `public/_headers` (Rule 12), and
+  hashed `/assets/*` answer `immutable`.
+* The served HTML references **no third-party origin**: every `src`/`href` is
+  same-origin, and the only outbound calls are the two API hosts at
+  generation time (Rule 5).
+* The key is readable in the deployed bundle **by design** (Rule 4) — see
+  `DEPLOY.md` → Notes for the quota story.
+
 ## Reproduce
 
 ```bash
@@ -78,6 +97,8 @@ KF_BASE=http://localhost:4173 python3 tools/e2e-check.py
 python3 tools/motion-audit.py && python3 tools/a11y-check.py
 python3 tools/pwa-check.py && npm run lighthouse
 python3 tools/live-check.py             # spends real free-tier quota
+KF_BASE=https://keyframe-nine.vercel.app python3 tools/e2e-check.py   # 59/59
+KF_BASE=https://keyframe-nine.vercel.app python3 tools/live-check.py  # 11/11
 ```
 
 ## Known limits

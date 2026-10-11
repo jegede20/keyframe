@@ -8,6 +8,8 @@ ready-to-paste prompt for video creation tools.
 **Free · No sign-up · No backend · No database.** Everything runs in the browser;
 history and settings live on your device.
 
+**Live:** <https://keyframe-nine.vercel.app> · **Source:** <https://github.com/jegede20/keyframe>
+
 ---
 
 ## How it works
@@ -47,7 +49,7 @@ URL ───▶│  r.jina.ai │────▶│  prompt 4    │───�
 | URL reading | Jina AI Reader — `https://r.jina.ai/{url}` |
 | AI | Groq — `openai/gpt-oss-120b` (fallback `openai/gpt-oss-20b`) |
 | Icons | Lucide React |
-| Hosting | Cloudflare Pages (free tier) |
+| Hosting | Vercel (free tier) — <https://keyframe-nine.vercel.app> |
 
 ## Running locally
 
