@@ -123,8 +123,7 @@ export default function Footer({ values, onChange, onGenerate, onStart }) {
         </div>
 
         <div className="kf-container kf-footer-base">
-          <span>No accounts · No tracking · Nothing leaves your device</span>
-          <span aria-hidden="true" className="kf-footer-dot">·</span>
+          <span>No accounts · No tracking</span>
           <span>© {new Date().getFullYear()} Keyframe</span>
         </div>
 
@@ -158,8 +157,8 @@ export default function Footer({ values, onChange, onGenerate, onStart }) {
           .kf-footer-link--action { font-weight: 500; color: var(--text-primary); }
           .kf-footer-base {
             display: flex;
-            flex-wrap: wrap;
             align-items: center;
+            justify-content: space-between;
             gap: 8px;
             margin-top: 24px;
             padding-top: 18px;
