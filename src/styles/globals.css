@@ -125,12 +125,98 @@ body {
 
   /* Layout hooks that used to live as inline styles on the element. Keeping
      them here means css-audit can prove every applied class is defined. */
+  /* ── Results-visible summary bar (InputSummary) ──────────────────────
+     URL shrinks (ellipsis); meta and actions never do. On phones the meta
+     takes its own row so nothing can overflow the card. */
+  /* Touch-gesture tip above the results tabs — phones only, one phrase per line */
+  .kf-tip {
+    display: none;
+    text-align: center;
+    color: var(--text-tertiary);
+    margin: -8px auto 0;
+    max-width: 280px;
+  }
+  @media (max-width: 767px) {
+    .kf-tip { display: block; }
+    .kf-tip span { display: block; }
+    /* `.kf-tip span` (0,1,1) would beat a bare `.kf-tip__sep` (0,1,0) and the
+       dot would land on a line of its own — keep this selector stronger. */
+    .kf-tip .kf-tip__sep { display: none; }
+  }
+  .kf-summary {
+    max-width: 820px;
+    margin: 0 auto;
+    padding: 8px 14px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+  }
+  .kf-summary__main {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1 1 160px;
+    min-width: 0;
+    padding: 6px 0;
+  }
+  .kf-summary__icon { color: var(--text-tertiary); flex-shrink: 0; }
+  .kf-summary__host {
+    display: block;
+    min-width: 0;
+    max-width: 100%;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .kf-summary__meta {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .kf-summary__chip { display: inline-flex; align-items: center; gap: 6px; }
+  .kf-summary__dot { color: var(--text-tertiary); }
+  .kf-summary__actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    margin-left: auto;
+  }
+  .kf-nowrap { white-space: nowrap; }
+  @media (max-width: 767px) {
+    /* Row 1: the URL (shrinks) with Edit/Redo beside it.
+       Row 2: the meta, so nothing can overflow the card. */
+    .kf-summary__main { flex: 1 1 120px; padding-bottom: 0; }
+    .kf-summary__actions { order: 2; }
+    .kf-summary__meta { order: 3; flex: 1 1 100%; padding-bottom: 8px; }
+  }
+  /* Tab labels: full text on desktop, one word per tab on phones, so the
+     third tab is never clipped. Both labels stay in the DOM — only one is
+     displayed — so text-based tooling keeps finding either wording. Neither
+     is aria-hidden: the displayed one must remain the button's accessible
+     name at every width (hiding both left the tabs unnamed). */
+  .kf-tab-label-short { display: none; }
+  @media (max-width: 767px) {
+    .kf-tab-label-full { display: none; }
+    .kf-tab-label-short { display: inline; }
+    /* the tab buttons carry their padding inline, so these need !important */
+    .kf-tabs { gap: 0 !important; }
+    .kf-tabs [role='tab'] { padding: 0 10px !important; }
+  }
   .kf-results-actions {
     display: flex;
     gap: 12px;
     justify-content: center;
     margin-top: 28px;
     flex-wrap: wrap;
+  }
+  @media (max-width: 767px) {
+    /* The sticky BottomBar owns Copy All / New Script on phones — this row
+       would be a second, identical set of buttons a scroll away. */
+    .kf-results-actions { display: none; }
   }
   .kf-footer-form {
     display: flex;

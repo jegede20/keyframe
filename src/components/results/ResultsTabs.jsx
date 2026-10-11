@@ -5,9 +5,9 @@ import CutListTab from './CutListTab.jsx';
 import VideoPromptTab from './VideoPromptTab.jsx';
 
 const TABS = [
-  { id: 'script', label: 'Script', icon: Clapperboard },
-  { id: 'cut', label: 'Cut List', icon: Scissors },
-  { id: 'prompt', label: 'Video Prompt', icon: Video },
+  { id: 'script', label: 'Script', short: 'Script', icon: Clapperboard },
+  { id: 'cut', label: 'Cut List', short: 'Cut List', icon: Scissors },
+  { id: 'prompt', label: 'Video Prompt', short: 'Prompt', icon: Video },
 ];
 
 /**
@@ -71,6 +71,7 @@ export default function ResultsTabs({
       <div
         role="tablist"
         aria-label="Script output sections"
+        className="kf-tabs"
         style={{
           display: 'flex',
           gap: 2,
@@ -80,7 +81,7 @@ export default function ResultsTabs({
           WebkitOverflowScrolling: 'touch',
         }}
       >
-        {TABS.map(({ id, label, icon: Icon }) => {
+        {TABS.map(({ id, label, short, icon: Icon }) => {
           const active = tab === id;
           return (
             <button
@@ -116,8 +117,14 @@ export default function ResultsTabs({
               }}
             >
               <Icon size={15} aria-hidden="true" />
-              {label}
-              {id === 'cut' && cutCount > 0 ? ` (${cutCount})` : ''}
+              <span className="kf-tab-label-full">
+                {label}
+                {id === 'cut' && cutCount > 0 ? ` (${cutCount})` : ''}
+              </span>
+              <span className="kf-tab-label-short">
+                {short}
+                {id === 'cut' && cutCount > 0 ? ` (${cutCount})` : ''}
+              </span>
             </button>
           );
         })}

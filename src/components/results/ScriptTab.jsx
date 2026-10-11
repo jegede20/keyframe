@@ -1,12 +1,11 @@
 import { Download } from 'lucide-react';
 import ShotCard from './ShotCard.jsx';
 import TimelineConnector from './TimelineConnector.jsx';
-import CopyButton from '../shared/CopyButton.jsx';
 import { formatScript, outputFilename } from '../../utils/formatScript.js';
 import { downloadText } from '../../utils/exportHistory.js';
 import { scriptWordStats } from '../../utils/wordCount.js';
 
-/** Section 8.5 — stats bar, shot list, Copy Full Script. */
+/** Section 8.5 — stats bar, shot list, download. */
 export default function ScriptTab({ output, onToast }) {
   const shots = output?.script || [];
   const meta = output?.meta || {};
@@ -59,15 +58,10 @@ export default function ScriptTab({ output, onToast }) {
           marginTop: 22,
         }}
       >
-        <CopyButton
-          id="full-script"
-          text={formatScript(output)}
-          label="Copy Full Script"
-          copiedLabel="Copied! ✓"
-          variant="primary"
-          size="sm"
-          onCopied={() => onToast?.('Full script copied to clipboard.', 'success')}
-        />
+        {/* No copy button here: "Copy All" (the sticky bar on phones, the row
+            below the shots on desktop) already copies exactly this text, and
+            two identically-labelled controls in one view is what got reported.
+            Downloading is unique to this row, so it stays. */}
         <button
           type="button"
           className="kf-btn kf-btn--secondary kf-btn--sm"

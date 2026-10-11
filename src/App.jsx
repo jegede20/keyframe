@@ -576,8 +576,14 @@ function Shell({ settings, updateSetting, history, isOnline, pwa, appState }) {
                   onRedo={() => runGeneration()}
                 />
                 {output && (
-                  <p className="kf-caption" style={{ textAlign: 'center', color: 'var(--text-tertiary)', marginTop: -8 }}>
-                    Tip: pull down at the top on mobile to regenerate · swipe left/right to change tabs
+                  /* Both gestures are touch-only, so the tip shows on phones
+                     and breaks at the separator instead of wrapping mid-phrase. */
+                  <p className="kf-caption kf-tip">
+                    <span>Tip: pull down at the top to regenerate</span>
+                    <span aria-hidden="true" className="kf-tip__sep">
+                      ·
+                    </span>
+                    <span>swipe to change tabs</span>
                   </p>
                 )}
               </>

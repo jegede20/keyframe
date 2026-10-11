@@ -101,7 +101,7 @@ async def main():
         await ev(tab, """(() => { const f=[...document.querySelectorAll('form')].find(f=>f.querySelector('#kf-main-features')); f.querySelector('button[type=submit]').click(); return true; })()""")
         for _ in range(30):
             await asyncio.sleep(0.5)
-            if await ev(tab, "document.body.innerText.includes('Copy Full Script')"):
+            if await ev(tab, """!!document.querySelector('[role=tablist][aria-label="Script output sections"]')"""):
                 break
         violations_all += await run_axe(tab, "3. Results view (script tab)")
         await ev(tab, """[...document.querySelectorAll('button[role=tab]')].find(b=>b.textContent.includes('Cut List')).click()""")

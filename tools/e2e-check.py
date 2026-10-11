@@ -289,7 +289,7 @@ async def main():
         await asyncio.sleep(0.8)
         check("cancel returns to input", await ev(tab, "!!document.getElementById('kf-main-features')"))
         check("cancel preserves inputs", await ev(tab, "document.getElementById('kf-main-url').value") == "https://acme.example")
-        check("no results after cancel", not await ev(tab, "document.body.innerText.includes('Copy Full Script')"))
+        check("no results after cancel", not await ev(tab, """!!document.querySelector('[role=tablist][aria-label="Script output sections"]')"""))
 
         # generate for real this time
         await ev(
@@ -303,10 +303,10 @@ async def main():
         # wait for results
         for _ in range(40):
             await asyncio.sleep(0.5)
-            if await ev(tab, "document.body.innerText.includes('Copy Full Script')"):
+            if await ev(tab, """!!document.querySelector('[role=tablist][aria-label="Script output sections"]')"""):
                 break
         print("\n4. Results view")
-        check("results rendered", await ev(tab, "document.body.innerText.includes('Copy Full Script')"))
+        check("results rendered", await ev(tab, """!!document.querySelector('[role=tablist][aria-label="Script output sections"]')"""))
         check("stats bar shows totals", await ev(tab, "document.body.innerText.includes('TOTAL: 90s')"))
         check("8 shot cards", await ev(tab, "document.querySelectorAll('article').length") >= 8)
         check("timeline connectors between shots", await ev(tab, "document.querySelectorAll('.kf-timeline-connector').length") == 7)
@@ -359,7 +359,7 @@ async def main():
         # load it back
         await ev(tab, """[...document.querySelectorAll('[role=button]')].find(el=>el.innerText.includes('Acme Boards')).click()""")
         await asyncio.sleep(1.0)
-        check("history item loads results", await ev(tab, "document.body.innerText.includes('Copy Full Script')"))
+        check("history item loads results", await ev(tab, """!!document.querySelector('[role=tablist][aria-label="Script output sections"]')"""))
 
         print("\n7. Regenerate with a cut-list screen (Add to Script)")
         await ev(tab, """[...document.querySelectorAll('button[role=tab]')].find(b=>b.textContent.includes('Cut List')).click()""")
@@ -373,9 +373,142 @@ async def main():
         )
         for _ in range(40):
             await asyncio.sleep(0.5)
-            if await ev(tab, "document.body.innerText.includes('Copy Full Script')"):
+            if await ev(tab, """!!document.querySelector('[role=tablist][aria-label="Script output sections"]')"""):
                 break
-        check("results returned after regen", await ev(tab, "document.body.innerText.includes('Copy Full Script')"))
+        check("results returned after regen", await ev(tab, """!!document.querySelector('[role=tablist][aria-label="Script output sections"]')"""))
+
+        # ── 7b. Results fit on a phone ───────────────────────────────────
+        # Reported from a real device: the summary bar overflowed (meta wrapped
+        # mid-phrase, the Edit control was pushed off screen), Copy All / New
+        # Script appeared twice, and the install banner stood three lines tall.
+        print("\n7b. Results on a phone — fit and no duplicated actions")
+        await tab.send_command(
+            "Emulation.setDeviceMetricsOverride",
+            {"width": 390, "height": 844, "deviceScaleFactor": 2, "mobile": True},
+        )
+        await asyncio.sleep(1.0)
+
+        fit = await ev(
+            tab,
+            """(() => {
+              const card = document.querySelector('.kf-summary');
+              if (!card) return { ok: false };
+              const edit = [...card.querySelectorAll('button')].find(b => (b.getAttribute('aria-label')||'') === 'Edit inputs');
+              const r = edit ? edit.getBoundingClientRect() : null;
+              return {
+                ok: true,
+                overflow: card.scrollWidth - card.clientWidth,
+                editVisible: !!r && r.width > 0 && r.left >= 0 && r.right <= window.innerWidth + 1,
+              };
+            })()""",
+        )
+        fi = fit or {}
+        check("summary bar does not overflow at 390px", fi.get("ok") and (fi.get("overflow") or 0) <= 0, f"overflow {fi.get('overflow')}px")
+        check("summary Edit control stays on screen", fi.get("editVisible") is True)
+
+        dup = await ev(
+            tab,
+            """(() => {
+              const vis = el => { const s = getComputedStyle(el); const r = el.getBoundingClientRect();
+                return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0 && r.height > 0; };
+              const text = (b) => b.textContent || '';
+              const copy = [...document.querySelectorAll('button')].filter(b => vis(b) && text(b).includes('Copy All'));
+              const fresh = [...document.querySelectorAll('button')].filter(b => vis(b) && text(b).includes('New Script'));
+              const inline = document.querySelector('.kf-results-actions');
+              const bar = document.querySelector('.kf-bottombar');
+              const circle = [...document.querySelectorAll('button')].find(b => /copy full script/i.test(b.getAttribute('aria-label') || ''));
+              return {
+                copy: copy.length, fresh: fresh.length,
+                inline: !!inline && vis(inline), bar: !!bar && vis(bar),
+                circle: !!circle && vis(circle),
+              };
+            })()""",
+        )
+        dp = dup or {}
+        check("exactly one Copy All visible on a phone", dp.get("copy") == 1, f"{dp.get('copy')} visible")
+        check("exactly one New Script visible on a phone", dp.get("fresh") == 1, f"{dp.get('fresh')} visible")
+        check(
+            "one action row per breakpoint",
+            dp.get("inline") is False and dp.get("bar") is True and dp.get("circle") is False,
+            f"inline {dp.get('inline')}, bar {dp.get('bar')}, copy circle {dp.get('circle')}",
+        )
+
+        # install banner: synthesized event, then measured where it actually sits
+        await ev(tab, "window.dispatchEvent(new Event('beforeinstallprompt')); true")
+        await asyncio.sleep(0.6)
+        banner = await ev(
+            tab,
+            """(() => {
+              const b = document.querySelector('.kf-install-banner');
+              if (!b) return { shown: false };
+              const r = b.getBoundingClientRect();
+              const bar = document.querySelector('.kf-bottombar').getBoundingClientRect();
+              return { shown: true, h: Math.round(r.height),
+                       overlap: r.top < bar.bottom && bar.top < r.bottom,
+                       gap: Math.round(bar.top - r.bottom) };
+            })()""",
+        )
+        bn = banner or {}
+        check(
+            "install banner stays a single compact row",
+            bn.get("shown") is True and (bn.get("h") or 999) <= 72,
+            f"{bn.get('h')}px tall",
+        )
+        check(
+            "install banner clears the action bar",
+            bn.get("overlap") is False and abs((bn.get("gap") or 0) - 11) <= 3,
+            f"{bn.get('gap')}px clear",
+        )
+        await ev(
+            tab,
+            """(() => { const d = document.querySelector('.kf-install-banner button[aria-label="Dismiss install banner"]'); if (d) d.click(); return true; })()""",
+        )
+        await asyncio.sleep(0.3)
+
+        tabfit = await ev(
+            tab,
+            """(() => {
+              const out = [];
+              document.querySelectorAll('[role=tablist]').forEach(tl => {
+                const r = tl.getBoundingClientRect();
+                if (!r.width) return;
+                const tabs = [...tl.querySelectorAll('[role=tab]')];
+                out.push({
+                  label: tl.getAttribute('aria-label'),
+                  overflow: tl.scrollWidth - tl.clientWidth,
+                  inside: tabs.every(t => t.getBoundingClientRect().right <= window.innerWidth + 1),
+                });
+              });
+              return JSON.stringify(out);
+            })()""",
+        )
+        tf = json.loads(tabfit or "[]")
+        check("every tab bar fits at 390px", bool(tf) and all(t["overflow"] <= 0 for t in tf), str([(t["label"], t["overflow"]) for t in tf]))
+        check("every tab is inside the viewport at 390px", bool(tf) and all(t["inside"] for t in tf))
+
+        check(
+            "gesture tip shows on a phone",
+            await ev(tab, "getComputedStyle(document.querySelector('.kf-tip')).display === 'block'"),
+        )
+
+        # back to desktop for the rest of the run
+        await tab.send_command(
+            "Emulation.setDeviceMetricsOverride",
+            {"width": 1440, "height": 900, "deviceScaleFactor": 2, "mobile": False},
+        )
+        await asyncio.sleep(0.8)
+        check(
+            "gesture tip hidden on desktop",
+            await ev(tab, "getComputedStyle(document.querySelector('.kf-tip')).display === 'none'"),
+        )
+        check(
+            "desktop keeps the inline action row",
+            await ev(tab, """(() => { const el = document.querySelector('.kf-results-actions'); return !!el && getComputedStyle(el).display !== 'none'; })()"""),
+        )
+        check(
+            "desktop hides the sticky action bar",
+            await ev(tab, """getComputedStyle(document.querySelector('.kf-bottombar')).display === 'none'"""),
+        )
 
         print("\n8. Persistence across reload")
         await tab.send_command("Page.navigate", {"url": URL})

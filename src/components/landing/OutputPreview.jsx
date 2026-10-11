@@ -17,9 +17,9 @@ const SAMPLE_CUTS = [
 ];
 
 const TABS = [
-  { id: 'script', label: 'Script', icon: Clapperboard },
-  { id: 'cut', label: 'Cut List', icon: Scissors },
-  { id: 'prompt', label: 'Video Prompt', icon: Video },
+  { id: 'script', label: 'Script', short: 'Script', icon: Clapperboard },
+  { id: 'cut', label: 'Cut List', short: 'Cut List', icon: Scissors },
+  { id: 'prompt', label: 'Video Prompt', short: 'Prompt', icon: Video },
 ];
 
 /** Section 8.2 — fake tabbed preview, same visual language as the real results. */
@@ -37,8 +37,8 @@ export default function OutputPreview() {
 
       <div className="kf-card" style={{ maxWidth: 860, margin: '0 auto', padding: '20px 20px 26px' }}>
         {/* Tabs */}
-        <div role="tablist" aria-label="Sample output sections" style={{ display: 'flex', gap: 2, borderBottom: '1px solid var(--border-subtle)', marginBottom: 18, overflowX: 'auto' }}>
-          {TABS.map(({ id, label, icon: Icon }) => {
+        <div role="tablist" aria-label="Sample output sections" className="kf-tabs" style={{ display: 'flex', gap: 2, borderBottom: '1px solid var(--border-subtle)', marginBottom: 18, overflowX: 'auto' }}>
+          {TABS.map(({ id, label, short, icon: Icon }) => {
             const active = tab === id;
             return (
               <button
@@ -64,8 +64,14 @@ export default function OutputPreview() {
                 }}
               >
                 <Icon size={15} aria-hidden="true" />
-                {label}
-                {id === 'cut' ? ` (${SAMPLE_CUTS.length})` : ''}
+                <span className="kf-tab-label-full">
+                  {label}
+                  {id === 'cut' ? ` (${SAMPLE_CUTS.length})` : ''}
+                </span>
+                <span className="kf-tab-label-short">
+                  {short}
+                  {id === 'cut' ? ` (${SAMPLE_CUTS.length})` : ''}
+                </span>
               </button>
             );
           })}

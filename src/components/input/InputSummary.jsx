@@ -17,6 +17,13 @@ const TONE_LABELS = {
 /**
  * Section 8.3 — slim bar that replaces InputCard while results are visible.
  * 🔗 url · N features · Ns · Tone   [✏️ Edit] [🔄 Redo]
+ *
+ * Layout note: the meta used to be one non-wrapping inline-flex line of six
+ * separate nodes, so on a 390px phone the row overflowed the card — "3" and
+ * "features" wrapped independently and the Edit/Redo controls were pushed
+ * clean off screen. Each meta item is now its own nowrap chip, the URL is the
+ * only element that shrinks (with an ellipsis), and the meta drops to its own
+ * row on narrow screens.
  */
 export default function InputSummary({ input, onEdit, onRedo, busy = false }) {
   const host = (() => {
@@ -27,46 +34,31 @@ export default function InputSummary({ input, onEdit, onRedo, busy = false }) {
     }
   })();
 
+  const chips = [`${featureCount(input.features)} features`, `${input.length}s`, TONE_LABELS[input.tone] || input.tone];
+
   return (
-    <div
-      className="kf-card kf-anim-collapse"
-      style={{
-        maxWidth: 820,
-        margin: '0 auto',
-        padding: '0 16px',
-        minHeight: 48,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        flexWrap: 'wrap',
-      }}
-    >
-      <span
-        className="kf-mono"
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 8,
-          color: 'var(--text-secondary)',
-          fontSize: 12,
-          minWidth: 0,
-          flex: 1,
-          padding: '12px 0',
-        }}
-      >
-        <Link2 size={14} aria-hidden="true" style={{ color: 'var(--text-tertiary)', flexShrink: 0 }} />
-        <span className="kf-truncate" style={{ maxWidth: 260 }} title={input.url}>
+    <div className="kf-card kf-summary kf-anim-collapse">
+      <div className="kf-summary__main">
+        <Link2 size={14} aria-hidden="true" className="kf-summary__icon" />
+        <span className="kf-mono kf-summary__host kf-truncate" title={input.url}>
           {host}
         </span>
-        <span aria-hidden="true" style={{ color: 'var(--text-tertiary)' }}>·</span>
-        {featureCount(input.features)} features
-        <span aria-hidden="true" style={{ color: 'var(--text-tertiary)' }}>·</span>
-        {input.length}s
-        <span aria-hidden="true" style={{ color: 'var(--text-tertiary)' }}>·</span>
-        {TONE_LABELS[input.tone] || input.tone}
-      </span>
+      </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '6px 0' }}>
+      <div className="kf-summary__meta kf-mono">
+        {chips.map((chip, index) => (
+          <span key={chip} className="kf-summary__chip">
+            {index > 0 && (
+              <span aria-hidden="true" className="kf-summary__dot">
+                ·
+              </span>
+            )}
+            <span className="kf-nowrap">{chip}</span>
+          </span>
+        ))}
+      </div>
+
+      <div className="kf-summary__actions">
         <button
           type="button"
           className="kf-btn kf-btn--ghost kf-btn--sm"
