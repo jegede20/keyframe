@@ -72,9 +72,11 @@ Last full run: **2026-10-11**, all suites green (numbers below are from that run
 Everything above is about a local build; the numbers also hold on the
 deployment that actually ships — `KF_BASE=https://keyframe-nine.vercel.app`:
 
-* `browser-check.py` **44/44 (+12 dev-only skips)** against the Vercel
-  deployment — landing render, settings/theme, history, IndexedDB, the mobile
-  layout and the install-banner geometry all hold on the host, not just locally.
+* `browser-check.py` **51/51 (+12 dev-only skips)** against the Vercel
+  deployment — landing render, settings/theme, history, IndexedDB, the
+  responsive header (a phone shows logo + hamburger only), the landing having
+  no sticky action bar, and both install-banner bands all hold on the host,
+  not just locally.
 * `e2e-check.py` **59/59** against the Vercel deployment (mocked Jina + Groq:
   full generation, cancel, offline path, rate limits, history round-trip).
 * `motion-audit.py` **14/14** against the Vercel deployment — the reduced-motion
@@ -109,7 +111,7 @@ KF_BASE=http://localhost:4173 python3 tools/e2e-check.py
 python3 tools/motion-audit.py && python3 tools/a11y-check.py
 python3 tools/pwa-check.py && npm run lighthouse
 python3 tools/live-check.py             # spends real free-tier quota
-KF_BASE=https://keyframe-nine.vercel.app python3 tools/browser-check.py  # 44/44 + 12 skips
+KF_BASE=https://keyframe-nine.vercel.app python3 tools/browser-check.py  # 51/51 + 12 skips
 KF_BASE=https://keyframe-nine.vercel.app python3 tools/e2e-check.py      # 59/59
 KF_BASE=https://keyframe-nine.vercel.app python3 tools/motion-audit.py   # 14/14
 KF_BASE=https://keyframe-nine.vercel.app python3 tools/a11y-check.py     # 0 violations (dark)
