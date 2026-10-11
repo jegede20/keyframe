@@ -468,6 +468,65 @@ async def main():
         check("hamburger drawer opens", await evaluate(tab, "document.body.innerText.includes('Menu') && document.body.innerText.includes('How It Works')"))
         await screenshot(tab, "06-mobile-menu.png")
 
+        # ── Clear All Data (destructive, so it runs last) ────────────
+        print("\n11. Clear All Data")
+        await tab.send_command(
+            "Emulation.setDeviceMetricsOverride",
+            {"width": 1440, "height": 900, "deviceScaleFactor": 1, "mobile": False},
+        )
+        await tab.send_command("Page.navigate", {"url": URL})
+        await asyncio.sleep(2.5)
+        if DEV:
+            seeded = await evaluate(
+                tab,
+                """(async () => {
+                  const mod = await import('/src/store/storage.js');
+                  await mod.saveScript({
+                    id: 'wipe-test-1',
+                    input: { url: 'https://example.com', features: 'x', length: 60, tone: 'casual', videoTool: 'any' },
+                    output: { meta: { appName: 'Wipe', totalSeconds: 60, shotCount: 1, estimatedWordCount: 1, tone: 'casual' },
+                              script: [{ shotNumber: 1 }], cutList: [], videoPrompt: { target: 'any', fullPrompt: 'x' } },
+                    createdAt: new Date().toISOString(),
+                    generation: { model: 'test', inputTokens: 1, outputTokens: 1, generationMs: 1 },
+                  });
+                  mod.writeJSON('kf_last_inputs', { url: 'https://seed.example' });
+                  mod.writeJSON('kf_settings', { theme: 'dark' });
+                  return JSON.stringify({
+                    count: await mod.countScripts(),
+                    keys: Object.keys(localStorage).filter(k => k.startsWith('kf_')).length,
+                  });
+                })()""",
+            )
+            seed_data = json.loads(seeded) if seeded else {}
+            check("seeded a script + settings before the wipe", seed_data.get("count", 0) >= 1 and seed_data.get("keys", 0) >= 2, str(seed_data))
+            await evaluate(tab, """(() => { const b = [...document.querySelectorAll('button')].find(x => x.getAttribute('aria-label') === 'Settings'); b.click(); return true; })()""")
+            await asyncio.sleep(0.5)
+            await evaluate(tab, """(() => { const b = [...document.querySelectorAll('button')].find(x => x.textContent.includes('Clear All Data')); b.click(); return true; })()""")
+            await asyncio.sleep(0.5)
+            dialog_copy = (await evaluate(tab, "document.body.innerText")) or ""
+            check("clear-all dialog never mentions a key", "API key" not in dialog_copy)
+            await evaluate(tab, """(() => { const b = [...document.querySelectorAll('button')].find(x => x.textContent.includes('Delete Everything')); b.click(); return true; })()""")
+            await asyncio.sleep(1.2)
+            wiped = await evaluate(
+                tab,
+                """(async () => {
+                  const mod = await import('/src/store/storage.js');
+                  return JSON.stringify({
+                    keys: Object.keys(localStorage).filter(k => k.startsWith('kf_')).length,
+                    scripts: await mod.countScripts(),
+                    toast: document.body.innerText.includes('All Keyframe data removed'),
+                  });
+                })()""",
+            )
+            wipe = json.loads(wiped) if wiped else {}
+            check("every kf_* key wiped", wipe.get("keys") == 0, f"{wipe.get('keys')} left")
+            check("history emptied", wipe.get("scripts") == 0, f"{wipe.get('scripts')} left")
+            check("user is told what happened", wipe.get("toast"), str(wipe.get("toast")))
+        else:
+            for name in ("seeded a script + settings before the wipe", "clear-all dialog never mentions a key",
+                         "every kf_* key wiped", "history emptied", "user is told what happened"):
+                skip(name, "the wipe test seeds storage through a source-module import — dev server only")
+
         print("\n" + "─" * 60)
         passed = sum(1 for _, ok, _ in results if ok)
         failed = [(n, d) for n, ok, d in results if not ok]

@@ -41,18 +41,17 @@ async def run_axe(tab, label):
         })()""",
     )
     violations = json.loads(report or "[]")
-    serious = [v for v in violations if v["impact"] in ("serious", "critical")]
     print(f"\n{label}")
     if not violations:
         print("  PASS  no axe violations")
     for v in violations:
-        mark = "FAIL " if v["impact"] in ("serious", "critical") else "warn "
+        mark = "FAIL " if v["impact"] in ("serious", "critical") else "WARN "
         print(f"  {mark} [{v['impact']}] {v['id']} × {v['nodes']} — {v['help']}")
-    return serious
+    return violations
 
 
 async def main():
-    failures = []
+    violations_all = []
     async with Browser(headless=True) as browser:
         tab = await browser.create_tab(DEV)
         await tab.send_command("Emulation.setFocusEmulationEnabled", {"enabled": True})
@@ -68,7 +67,7 @@ async def main():
         theme = await ev(tab, "document.documentElement.getAttribute('data-theme')")
         print(f"auditing theme: {theme}")
 
-        failures += await run_axe(tab, "1. Landing page (desktop)")
+        violations_all += await run_axe(tab, "1. Landing page (desktop)")
 
         # workspace state
         await ev(tab, """(() => {
@@ -78,7 +77,7 @@ async def main():
           document.querySelector('button[type=submit]').click(); return true;
         })()""")
         await asyncio.sleep(1)
-        failures += await run_axe(tab, "2. Input workspace")
+        violations_all += await run_axe(tab, "2. Input workspace")
 
         # results state via mocked APIs
         await ev(tab, """
@@ -100,33 +99,37 @@ async def main():
             await asyncio.sleep(0.5)
             if await ev(tab, "document.body.innerText.includes('Copy Full Script')"):
                 break
-        failures += await run_axe(tab, "3. Results view (script tab)")
+        violations_all += await run_axe(tab, "3. Results view (script tab)")
         await ev(tab, """[...document.querySelectorAll('button[role=tab]')].find(b=>b.textContent.includes('Cut List')).click()""")
         await asyncio.sleep(0.5)
-        failures += await run_axe(tab, "4. Results view (cut list tab)")
+        violations_all += await run_axe(tab, "4. Results view (cut list tab)")
 
         # overlays
         await ev(tab, """[...document.querySelectorAll('button')].find(b=>(b.getAttribute('aria-label')||'').startsWith('Script history')).click()""")
         await asyncio.sleep(0.6)
-        failures += await run_axe(tab, "5. History drawer")
+        violations_all += await run_axe(tab, "5. History drawer")
         await ev(tab, """[...document.querySelectorAll('button')].find(b=>b.getAttribute('aria-label')==='Close history').click()""")
         await asyncio.sleep(0.4)
         await ev(tab, """[...document.querySelectorAll('button')].find(b=>b.getAttribute('aria-label')==='Settings').click()""")
         await asyncio.sleep(0.6)
-        failures += await run_axe(tab, "6. Settings modal")
+        violations_all += await run_axe(tab, "6. Settings modal")
         await ev(tab, """[...document.querySelectorAll('button')].find(b=>b.getAttribute('aria-label')==='Close settings').click()""")
         await asyncio.sleep(0.4)
 
         # mobile
         await tab.send_command("Emulation.setDeviceMetricsOverride", {"width": 390, "height": 844, "deviceScaleFactor": 3, "mobile": True})
         await asyncio.sleep(1)
-        failures += await run_axe(tab, "7. Results on mobile (390px)")
+        violations_all += await run_axe(tab, "7. Results on mobile (390px)")
 
     print("\n" + "─" * 60)
-    print(f"axe-core: {len(failures)} serious/critical violations")
-    for v in failures:
-        print(f"   - {v['id']} ({v['impact']}) × {v['nodes']}")
-    sys.exit(1 if failures else 0)
+    serious = [v for v in violations_all if v["impact"] in ("serious", "critical")]
+    if violations_all:
+        print(f"axe-core: {len(violations_all)} violations ({len(serious)} serious/critical)")
+        for v in violations_all:
+            print(f"   - [{v['impact']}] {v['id']} × {v['nodes']}")
+    else:
+        print("axe-core: 0 violations at any impact ✓")
+    sys.exit(1 if violations_all else 0)
 
 
 asyncio.run(main())

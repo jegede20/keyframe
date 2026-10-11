@@ -6,6 +6,7 @@ export default function ToastContainer({ toasts = [], onDismiss }) {
 
   return (
     <div
+      role="region"
       aria-label="Notifications"
       style={{
         position: 'fixed',

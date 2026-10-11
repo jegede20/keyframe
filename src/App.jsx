@@ -48,7 +48,7 @@ import { fetchAndCleanJina, isValidUrl, normalizeUrl } from './services/jina.js'
 import { generateWithFallback, resolveApiKey } from './services/groq.js';
 import { normalizeError } from './services/errorClassifier.js';
 import { formatFullOutput } from './utils/formatScript.js';
-import { readJSON, KF_KEYS } from './store/storage.js';
+import { readJSON, KF_KEYS, clearAllLocalStorage } from './store/storage.js';
 
 function fallbackCopy(text) {
   try {
@@ -404,17 +404,13 @@ function Shell({ settings, updateSetting, history, isOnline, pwa, appState }) {
   const handleClearAllData = useCallback(() => {
     setConfirm({
       title: 'Delete everything?',
-      message: 'This will delete all scripts, settings, and your API key. Cannot be undone.',
+      message: 'This deletes every saved script and all settings on this device. Cannot be undone.',
       confirmLabel: 'Delete Everything',
       onConfirm: async () => {
         await history.clearHistory();
-        try {
-          Object.keys(window.localStorage)
-            .filter((key) => key.startsWith('kf_'))
-            .forEach((key) => window.localStorage.removeItem(key));
-        } catch (err) {
-          /* storage blocked — nothing else to do */
-        }
+        /* storage.js owns the wipe (and the try/catch around it), so this
+           button cannot drift away from the tested helper. */
+        clearAllLocalStorage();
         setConfirm(null);
         setSettingsOpen(false);
         reset();
