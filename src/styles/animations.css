@@ -75,6 +75,32 @@
     animation: kfGlowPulse 3s ease-in-out infinite;
   }
 
+  /* ── Interface transitions (Rule 8: motion lives only inside this gate) ─
+     Hover, focus, theme-switch and reveal transitions. They started life in
+     globals.css, which meant they kept animating under prefers-reduced-motion;
+     the base rules now carry the final state only. */
+  html,
+  body {
+    transition: background-color 200ms ease, color 200ms ease;
+  }
+  .kf-btn {
+    transition: background-color 150ms ease, color 150ms ease,
+      border-color 150ms ease, transform 150ms ease, opacity 150ms ease,
+      box-shadow 150ms ease;
+  }
+  .kf-icon-btn {
+    transition: background-color 150ms ease, color 150ms ease;
+  }
+  .kf-input {
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+  }
+  .kf-reveal {
+    transition: opacity 500ms ease-out, transform 500ms ease-out;
+  }
+  .kf-reveal-scale {
+    transition: opacity 450ms ease-out, transform 450ms ease-out;
+  }
+
   /* ── Generic fade ────────────────────────────────────────────────────── */
   @keyframes kfFade {
     from {
@@ -287,5 +313,38 @@
   }
   .kf-anim-paste {
     animation: kfPastePulse 520ms ease-out both;
+  }
+}
+
+
+/* ── Reduced motion: the hard stop (Rule 8) ─────────────────────────────────
+   The gate above handles every stylesheet-driven animation. This block is the
+   safety net for everything a stylesheet gate cannot reach:
+
+     1. Inline `transition:` styles written in JSX (14 of them across the
+        results cards, navbar, inputs, tabs…). Inline declarations outrank
+        stylesheet rules, so only `!important` here can cancel them.
+     2. Any declaration added later by someone who forgets the gate.
+
+   Durations go to 0s rather than a token value, so `animation-fill-mode: both`
+   still lands elements on their final state (no frozen mid-animation frames),
+   and the scroll-reveal primitives are shown outright so they never depend on
+   the IntersectionObserver to become readable. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0s !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+  }
+
+  .kf-reveal,
+  .kf-reveal-scale {
+    opacity: 1 !important;
+    transform: none !important;
   }
 }

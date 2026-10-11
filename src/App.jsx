@@ -40,6 +40,7 @@ import useSettings from './hooks/useSettings.js';
 import useHistory from './hooks/useHistory.js';
 import { ToastProvider, useToastSafe } from './hooks/useToast.js';
 import useOnlineStatus from './hooks/useOnlineStatus.js';
+import { scrollBehavior } from './utils/motion.js';
 import usePWAInstall from './hooks/usePWAInstall.js';
 
 /* services */
@@ -144,7 +145,7 @@ function Shell({ settings, updateSetting, history, isOnline, pwa, appState }) {
     const t = setTimeout(() => {
       const el = workRef.current;
       if (!el) return;
-      window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 76, behavior: 'smooth' });
+      window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 76, behavior: scrollBehavior() });
     }, 80);
     return () => clearTimeout(t);
   }, [state]);
@@ -312,7 +313,7 @@ function Shell({ settings, updateSetting, history, isOnline, pwa, appState }) {
     }
     reset();
     setActiveStep(0);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: scrollBehavior() });
   }, [output, input, history, addToast, reset, lastGeneration]);
 
   /* ── History actions ─────────────────────────────────────────────────── */
@@ -434,13 +435,13 @@ function Shell({ settings, updateSetting, history, isOnline, pwa, appState }) {
 
   const handleGetStarted = useCallback(() => {
     if (state === STATES.RESULTS) {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      window.scrollTo({ top: 0, behavior: scrollBehavior() });
       return;
     }
     setInWorkspace(true);
     reset();
     setTimeout(() => {
-      workRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      workRef.current?.scrollIntoView({ behavior: scrollBehavior(), block: 'start' });
       setTimeout(() => document.getElementById('kf-main-url')?.focus(), 350);
     }, 60);
   }, [state, reset]);

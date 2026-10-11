@@ -98,7 +98,6 @@ body {
   font-family: var(--font-body);
   font-size: 16px;
   line-height: 1.6;
-  transition: background-color 200ms ease, color 200ms ease;
 }
 
 @layer components {
@@ -194,9 +193,6 @@ body {
     line-height: 1;
     border-radius: var(--radius-pill);
     border: 1px solid transparent;
-    transition: background-color 150ms ease, color 150ms ease,
-      border-color 150ms ease, transform 150ms ease, opacity 150ms ease,
-      box-shadow 150ms ease;
     white-space: nowrap;
   }
   .kf-btn--lg {
@@ -257,7 +253,6 @@ body {
     height: 44px;
     border-radius: var(--radius-md);
     color: var(--text-secondary);
-    transition: background-color 150ms ease, color 150ms ease;
   }
   .kf-icon-btn:hover {
     background: var(--bg-surface-hover);
@@ -279,7 +274,6 @@ body {
     color: var(--text-primary);
     font-family: var(--font-body);
     font-size: 15px;
-    transition: border-color 150ms ease, box-shadow 150ms ease;
   }
   .kf-input {
     height: 52px;
@@ -420,7 +414,6 @@ body {
   .kf-reveal {
     opacity: 0;
     transform: translateY(16px);
-    transition: opacity 500ms ease-out, transform 500ms ease-out;
   }
   .kf-reveal.is-visible {
     opacity: 1;
@@ -429,7 +422,6 @@ body {
   .kf-reveal-scale {
     opacity: 0;
     transform: scale(0.97);
-    transition: opacity 450ms ease-out, transform 450ms ease-out;
   }
   .kf-reveal-scale.is-visible {
     opacity: 1;
