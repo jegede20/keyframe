@@ -43,7 +43,7 @@ Last full run: **2026-10-11**, all suites green (numbers below are from that run
 | --- | --- | --- | --- |
 | `tools/pipeline-test.mjs` | 90 checks, no browser: cleaning passes, prompt assembly, timing, parser repair, error classification, stubbed truncation | 90 pass / 5 skipped (live-only) | — |
 | `tools/browser-check.py` | 66 checks of the real UI, incl. the responsive header, IndexedDB round-trip, prune at the 50-record cap, install-banner geometry, Clear All Data | 66/66 | 51/51 + 12 skips |
-| `tools/e2e-check.py` | 59 checks with mocked Jina + Groq: full generation, cancel, clipboard, history, rate limits, offline, cut-short, incomplete | 59/59 | 59/59 |
+| `tools/e2e-check.py` | 72 checks with mocked Jina + Groq: full generation, cancel, clipboard, history, rate limits, offline, cut-short, incomplete, and the phone results layout (no overflow, no duplicated actions) | 72/72 | 72/72 |
 | `tools/motion-audit.py` | 14 checks: every element, both motion states | 14/14 | 14/14 |
 | `tools/a11y-check.py` | axe-core 4.10.2 across 7 surfaces, per theme | 0 violations (dark, light) | — |
 | `tools/pwa-check.py` | 27 checks: SW lifecycle, precache, offline payloads, `offline.html`, boot with the server down | — | 27/27 |
@@ -77,7 +77,7 @@ deployment that actually ships — `KF_BASE=https://keyframe-nine.vercel.app`:
   responsive header (a phone shows logo + hamburger only), the landing having
   no sticky action bar, and both install-banner bands all hold on the host,
   not just locally.
-* `e2e-check.py` **59/59** against the Vercel deployment (mocked Jina + Groq:
+* `e2e-check.py` **72/72** against the Vercel deployment (mocked Jina + Groq:
   full generation, cancel, offline path, rate limits, history round-trip).
 * `motion-audit.py` **14/14** against the Vercel deployment — the reduced-motion
   kill-switch holds on the shipped bundle, not just locally.
@@ -112,7 +112,7 @@ python3 tools/motion-audit.py && python3 tools/a11y-check.py
 python3 tools/pwa-check.py && npm run lighthouse
 python3 tools/live-check.py             # spends real free-tier quota
 KF_BASE=https://keyframe-nine.vercel.app python3 tools/browser-check.py  # 51/51 + 12 skips
-KF_BASE=https://keyframe-nine.vercel.app python3 tools/e2e-check.py      # 59/59
+KF_BASE=https://keyframe-nine.vercel.app python3 tools/e2e-check.py      # 72/72
 KF_BASE=https://keyframe-nine.vercel.app python3 tools/motion-audit.py   # 14/14
 KF_BASE=https://keyframe-nine.vercel.app python3 tools/a11y-check.py     # 0 violations (dark)
 LH_URL=https://keyframe-nine.vercel.app/ npm run lighthouse              # gates pass
