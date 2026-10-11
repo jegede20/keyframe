@@ -123,6 +123,33 @@ body {
     padding-right: 20px;
   }
 
+  /* Layout hooks that used to live as inline styles on the element. Keeping
+     them here means css-audit can prove every applied class is defined. */
+  .kf-results-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 28px;
+    flex-wrap: wrap;
+  }
+  .kf-footer-form {
+    display: flex;
+    gap: 12px;
+    max-width: 620px;
+    margin: 0 auto;
+    position: relative;
+  }
+  .kf-footer-inner {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    font-family: var(--font-body);
+    font-size: 13px;
+    color: var(--text-tertiary);
+  }
+
   /* ── Surfaces ───────────────────────────────────────────────────────── */
   .kf-card {
     background: var(--bg-surface);

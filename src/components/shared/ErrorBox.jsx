@@ -1,10 +1,10 @@
-import { AlertTriangle, Pencil, RefreshCw, Settings } from 'lucide-react';
+import { AlertTriangle, Pencil, RefreshCw } from 'lucide-react';
 
 /**
  * Section 8.7 — error surface for all failure types.
  * Actions map to the `action` field from errorClassifier.normalizeError().
  */
-export default function ErrorBox({ error, onRetry, onEditInputs, onOpenSettings, onDismiss }) {
+export default function ErrorBox({ error, onRetry, onEditInputs, onDismiss }) {
   if (!error) return null;
 
   const { title = 'Something went wrong', userMsg = '', suggestion = null, action = 'RETRY' } = error;
@@ -13,18 +13,6 @@ export default function ErrorBox({ error, onRetry, onEditInputs, onOpenSettings,
   if (action === 'RETRY' || action === 'RETRY_ONLINE') {
     actions.push(
       <button key="retry" type="button" className="kf-btn kf-btn--primary kf-btn--sm" onClick={onRetry}>
-        <RefreshCw size={15} /> Try Again
-      </button>
-    );
-  }
-  if (action === 'OPEN_SETTINGS') {
-    actions.push(
-      <button key="settings" type="button" className="kf-btn kf-btn--primary kf-btn--sm" onClick={onOpenSettings}>
-        <Settings size={15} /> Open Settings
-      </button>
-    );
-    actions.push(
-      <button key="retry2" type="button" className="kf-btn kf-btn--ghost kf-btn--sm" onClick={onRetry}>
         <RefreshCw size={15} /> Try Again
       </button>
     );

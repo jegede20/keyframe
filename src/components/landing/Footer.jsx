@@ -50,7 +50,6 @@ export default function Footer({ values, onChange, onGenerate }) {
               if (urlValid) onGenerate();
             }}
             className="kf-footer-form"
-            style={{ display: 'flex', gap: 12, maxWidth: 620, margin: '0 auto', position: 'relative' }}
           >
             <div style={{ position: 'relative', flex: 1 }}>
               <span
@@ -96,18 +95,7 @@ export default function Footer({ values, onChange, onGenerate }) {
           paddingBottom: 'calc(22px + 76px)', // clears the mobile bottom bar
         }}
       >
-        <div
-          className="kf-container kf-footer-inner"
-          style={{
-            display: 'flex',
-            gap: 10,
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            flexWrap: 'wrap',
-            fontFamily: 'var(--font-body)',
-            fontSize: 13,
-            color: 'var(--text-tertiary)',
-          }}
+        <div className="kf-container kf-footer-inner">
         >
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
             <LogoMark size={15} />

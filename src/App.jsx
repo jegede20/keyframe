@@ -616,7 +616,6 @@ function Shell({ settings, updateSetting, history, isOnline, pwa, appState }) {
                   reset();
                   setEditing(true);
                 }}
-                onOpenSettings={() => setSettingsOpen(true)}
               />
             )}
 
@@ -630,10 +629,7 @@ function Shell({ settings, updateSetting, history, isOnline, pwa, appState }) {
                   onSwipeRefresh={handlePullRefresh}
                 />
 
-                <div
-                  className="kf-results-actions"
-                  style={{ display: 'flex', gap: 12, justifyContent: 'center', marginTop: 28, flexWrap: 'wrap' }}
-                >
+                <div className="kf-results-actions">
                   <button type="button" className="kf-btn kf-btn--primary" onClick={copyAll}>
                     <Copy size={16} /> {copiedAll ? 'Copied! ✓' : 'Copy All'}
                   </button>

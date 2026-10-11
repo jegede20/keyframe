@@ -36,6 +36,12 @@ const codeFiles = files.filter((f) => ['.jsx', '.js'].includes(extname(f)) && !f
 
 const CLASS_RE = /\bkf-[a-z0-9-]+\b/gi;
 
+/* A token reached through one of these is an element id or an id namespace
+   (InputCard's `idPrefix = 'kf-main'`), never a class — even though both
+   share the kf- prefix. aria-controls and friends point at ids too. */
+const ID_REF_RE =
+  /(?:(?:id|htmlFor|idPrefix|aria-controls|aria-labelledby|aria-describedby|aria-owns|aria-activedescendant)\s*[:=]\s*["'`{]?|getElementById\(["'`]?)$/;
+
 /* ── Classes the components APPLY (className / classList / clsx-ish) ─────── */
 const used = new Map();
 /* ── Tokens that are really element ids or test hooks — reported separately ─ */
@@ -83,8 +89,8 @@ for (const file of codeFiles) {
       dynamicPrefixes.add(name + (tail.startsWith('-${') ? '-' : ''));
       continue;
     }
-    const before = withoutStyles.slice(Math.max(0, match.index - 22), match.index);
-    if (/(id=|getElementById\(|htmlFor=)["'`{]?$/.test(before)) {
+    const before = withoutStyles.slice(Math.max(0, match.index - 48), match.index);
+    if (ID_REF_RE.test(before)) {
       add(idLike, name, short);
     } else {
       add(used, name, short);
