@@ -1,0 +1,98 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   FONTS — self-hosted (no third-party requests at runtime)
+   ═══════════════════════════════════════════════════════════════════════════
+   Google Fonts used to be loaded from fonts.googleapis.com, which added a
+   cross-origin round trip to the critical path and made offline rendering
+   inconsistent (the fonts simply failed and text re-laid-out). These are the
+   same latin-subset variable files, served from /fonts.
+
+   Two families of metric-matched fallback faces sit directly behind each
+   webfont. They exist so the swap from fallback to webfont does not reflow the
+   page (Layout Shift), on any platform: one set tuned against Arial/Helvetica
+   metrics (Windows, macOS), one against DejaVu Sans (default on bare Linux).
+   Overrides were computed from the fonts' own OS/2 + hhea tables.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@font-face {
+  font-family: 'Space Grotesk';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('/fonts/space-grotesk-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/inter-latin.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url('/fonts/jetbrains-mono-latin.woff2') format('woff2');
+}
+
+/* Space Grotesk Fallback metrics matched to arial */
+@font-face {
+  font-family: 'Space Grotesk Fallback';
+  src: local('Arial'), local('Helvetica');
+  size-adjust: 96.12%;
+  ascent-override: 102.368%;
+  descent-override: 30.378%;
+  line-gap-override: 0.0%;
+}
+
+/* Space Grotesk Fallback DV metrics matched to dejavu */
+@font-face {
+  font-family: 'Space Grotesk Fallback DV';
+  src: local('DejaVu Sans');
+  size-adjust: 110.29%;
+  ascent-override: 89.218%;
+  descent-override: 26.475%;
+  line-gap-override: 0.0%;
+}
+
+/* Inter Fallback metrics matched to arial */
+@font-face {
+  font-family: 'Inter Fallback';
+  src: local('Arial'), local('Helvetica');
+  size-adjust: 104.95%;
+  ascent-override: 92.302%;
+  descent-override: 22.983%;
+  line-gap-override: 0.0%;
+}
+
+/* Inter Fallback DV metrics matched to dejavu */
+@font-face {
+  font-family: 'Inter Fallback DV';
+  src: local('DejaVu Sans');
+  size-adjust: 120.42%;
+  ascent-override: 80.445%;
+  descent-override: 20.03%;
+  line-gap-override: 0.0%;
+}
+
+/* JetBrains Mono Fallback metrics matched to arial */
+@font-face {
+  font-family: 'JetBrains Mono Fallback';
+  src: local('Arial'), local('Helvetica');
+  size-adjust: 103.52%;
+  ascent-override: 98.534%;
+  descent-override: 28.981%;
+  line-gap-override: 0.0%;
+}
+
+/* JetBrains Mono Fallback DV metrics matched to dejavu */
+@font-face {
+  font-family: 'JetBrains Mono Fallback DV';
+  src: local('DejaVu Sans');
+  size-adjust: 118.78%;
+  ascent-override: 85.876%;
+  descent-override: 25.258%;
+  line-gap-override: 0.0%;
+}

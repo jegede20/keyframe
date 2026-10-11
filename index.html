@@ -31,11 +31,11 @@
   <meta name="twitter:description" content="Turn any app into a ready-to-shoot demo script. Free, no sign-up." />
   <meta name="twitter:image" content="/og-image.png" />
 
-  <!-- Font preconnect + load -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" />
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <!-- Fonts: self-hosted (src/styles/fonts.css), no third-party request.
+       The two above-the-fold faces are preloaded so the hero paints in the
+       brand type; JetBrains Mono loads with the stylesheet when used. -->
+  <link rel="preload" href="/fonts/space-grotesk-latin.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="/fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin />
 
   <!-- FOUC prevention — runs before React mounts -->
   <script>

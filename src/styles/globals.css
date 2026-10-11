@@ -35,9 +35,11 @@
   --danger-solid: #cf3f3f; /* white-on-red at 4.5:1+ */
 
   /* Typography */
-  --font-display: 'Space Grotesk', system-ui, sans-serif;
-  --font-body: 'Inter', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+  --font-display: 'Space Grotesk', 'Space Grotesk Fallback', 'Space Grotesk Fallback DV',
+    system-ui, sans-serif;
+  --font-body: 'Inter', 'Inter Fallback', 'Inter Fallback DV', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'JetBrains Mono Fallback', 'JetBrains Mono Fallback DV',
+    ui-monospace, monospace;
 
   /* Border Radius */
   --radius-sm: 8px;

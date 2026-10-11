@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test:pipeline": "node tools/run-pipeline-test.mjs",
-    "audit:css": "node tools/css-audit.mjs"
+    "audit:css": "node tools/css-audit.mjs",
+    "lighthouse": "node tools/lighthouse.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.454.0",
@@ -19,6 +20,7 @@
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
+    "lighthouse": "^11.7.1",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "vite": "^5.4.11",

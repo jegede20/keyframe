@@ -43,7 +43,7 @@ immutable for a year, `/assets/*` etc. The SPA redirect rewrites everything to
 
 ## 3. Post-deploy checklist
 
-- [ ] `https://<project>.pages.dev` loads and the hero renders.
+- [ ] `https://<project>.pages.dev` loads, the hero renders in Space Grotesk (self-hosted from `/fonts`), and DevTools → Network shows **no third-party requests**.
 - [ ] Chrome desktop shows the **Install** icon in the address bar (PWA installable).
 - [ ] DevTools → Application → Service Workers shows `sw.js` **activated** and running.
 - [ ] DevTools → Application → Cache Storage shows `keyframe-v1.0.0-shell` (21 entries).
@@ -81,6 +81,9 @@ KF_THEME=light python3 tools/a11y-check.py
 # 2. production bundle for the PWA suite
 npm run build
 python3 tools/pwa-check.py            # 27 checks, serves dist/ itself
+
+# 2b. Lighthouse acceptance (PWA 100 / a11y ≥ 95 / LCP < 2.5s / CLS < 0.1)
+CHROME_PATH=… npm run lighthouse
 
 # 3. pipeline (no browser needed)
 node tools/run-pipeline-test.mjs      # 86 checks

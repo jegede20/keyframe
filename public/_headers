@@ -18,3 +18,7 @@
 
 /screenshots/*
   Cache-Control: public, max-age=86400
+
+# Self-hosted webfonts — content is stable, cache hard
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable

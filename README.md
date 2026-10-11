@@ -41,6 +41,7 @@ URL ───▶│  r.jina.ai │────▶│  prompt 4    │───�
 | --- | --- |
 | Framework | React 18 + Vite 5 (plain JavaScript, no TypeScript) |
 | Styling | Tailwind CSS + CSS custom properties (design tokens in `src/styles/globals.css`) |
+| Fonts | Self-hosted (Space Grotesk / Inter / JetBrains Mono, latin subsets) with metric-matched fallback faces — zero third-party requests |
 | PWA | Custom `sw.js` + `vite-plugin-pwa` (`injectManifest`) |
 | Storage | `localStorage` (settings, inputs, history index) + IndexedDB (full scripts, custom adapter) |
 | URL reading | Jina AI Reader — `https://r.jina.ai/{url}` |
@@ -88,6 +89,29 @@ exactly to the target, first shot at `0:00`, final `timeEnd` on the total, every
 narrator line inside 130 wpm, cut list length 2–8, prompt length, and no filler
 opening line.
 
+## Performance
+
+Measured on the production build with Lighthouse 11 (mobile, simulated 4G throttling), median of three passes:
+
+| Metric | Result | Spec target |
+| --- | --- | --- |
+| PWA | **100** | 100 |
+| Accessibility | **100** | ≥ 95 |
+| Best practices | **100** | — |
+| LCP | **~2.3 s** | < 2.5 s |
+| CLS | **0.000** | < 0.1 |
+| Performance | 86–97 (TBT varies on shared CPUs) | — |
+
+Three changes got it there, each verified by measurement:
+
+1. **Self-hosted fonts.** The Google Fonts `<link>` cost two cross-origin round trips before the hero could paint, and left the page with no webfont at all when offline. The same latin subsets are now served from `/fonts` with `font-display: swap` and preloaded. Replaced third-party requests: **0**.
+2. **Metric-matched fallbacks.** Six extra `@font-face` blocks (two per brand face, tuned against Arial/Helvetica and DejaVu Sans) with `size-adjust`/`ascent-override` computed from each font's own OS/2 + hhea tables. Text no longer reflows when the webfont arrives.
+3. **Critical CSS inlined + a floating install banner.** The stylesheet (~7 kB) is inlined into `index.html` at build time (the emitted file stays in precache), removing a blocking round trip; and the PWA install banner — which appears ~2 s in, once the service worker activates — is `position: fixed` instead of sitting in the document flow, so it no longer pushes the hero down. That banner was responsible for the *entire* pre-fix CLS of 0.148.
+
+> One thing tried and rejected: `content-visibility: auto` on the below-fold sections. Measured against the same build it moved nothing (LCP 2.3 s either way) and broke text-based assertions, so it was removed rather than shipped on faith.
+
+Run the acceptance checks yourself with `npm run lighthouse` (see `tools/lighthouse.mjs`) after `npm run build && npm run preview`.
+
 ## Automated verification (`tools/`)
 
 Everything below runs without any paid service. Chrome is pulled by
@@ -101,6 +125,7 @@ Everything below runs without any paid service. Chrome is pulled by
 | `python3 tools/pwa-check.py` | 27 checks on the production build: SW lifecycle, versioned caches, precache contents, `503 {"error":"offline"}` payloads for both API hosts, `offline.html` fallback, cached-shell boot with the server stopped, `_headers`/`_redirects`/manifest. |
 | `python3 tools/a11y-check.py` | axe-core 4.10.2 audit of landing, workspace, results, overlays and mobile — **0 serious/critical violations** in dark and light themes (`KF_THEME=light`). |
 | `python3 tools/live-check.py [url]` | **The only live suite.** Drives the real UI against real r.jina.ai + api.groq.com: generation, shot cards, 300–600 word video prompt, cut list, clipboard contents, history — 11 checks. Spends real free-tier quota, so run it before a release rather than in the routine loop. |
+| `npm run lighthouse` | Three Lighthouse passes on the production build, medians reported, and the four acceptance thresholds enforced (PWA 100 · a11y ≥ 95 · LCP < 2.5 s · CLS < 0.1). |
 | `node tools/css-audit.mjs` | Stylesheet coverage: every `kf-*` class a component applies is defined somewhere, and no dead rules are left behind (`npm run audit:css`). |
 
 ## Project layout
