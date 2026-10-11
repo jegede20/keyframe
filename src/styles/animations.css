@@ -191,6 +191,21 @@
     animation: kfSlideInRight 250ms ease-out both;
   }
 
+  /* ── 109b. Update dropdown: drops in from under the header, 200ms ────── */
+  @keyframes kfDropIn {
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .kf-anim-drop {
+    animation: kfDropIn 200ms ease-out both;
+  }
+
   /* ── 110. Settings modal: scale 0.95 → 1.0 + fade, 200ms ─────────────── */
   @keyframes kfModalIn {
     from {

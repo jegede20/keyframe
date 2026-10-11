@@ -463,6 +463,10 @@ function Shell({ settings, updateSetting, history, isOnline, pwa, appState }) {
         historyCount={history.historyIndex.length}
       />
 
+      {/* Sits directly under the header, outside <main> — it is fixed, so it
+          never participates in the landing page's flow. */}
+      <UpdateBanner onToast={addToast} />
+
       <main style={{ flex: 1, paddingBottom: 96 }}>
       {pwa.shouldShowInstall && !installBannerHidden && (
         <InstallPrompt
@@ -476,8 +480,6 @@ function Shell({ settings, updateSetting, history, isOnline, pwa, appState }) {
           onToast={addToast}
         />
       )}
-
-      <UpdateBanner onToast={addToast} />
 
       {refreshing && (
         <div

@@ -89,8 +89,9 @@ read different config files, which is why both exist).
 - [ ] Generate a real script end to end, then Settings → Export History (JSON) downloads.
 - [ ] Mobile: Android Chrome install prompt appears; iOS Safari shows the
       "Add to Home Screen" instructions banner instead.
-- [ ] Push a trivial change → the **"A new version of Keyframe is ready"** banner
-      appears in an already-open tab within ~60 min (or on next focus).
+- [ ] Push a trivial change → the **"Update available"** dropdown appears under the
+      header in an already-open tab within ~60 min (or on next focus); Update Now
+      reloads into the new build.
 
 Both hosts produce the same artifact, so a local `npm run build` is a faithful
 rehearsal — section 5 walks the same checks against `:4173` and against the
@@ -122,12 +123,12 @@ bash tools/fetch-chrome-libs.sh       # extracts the few system libs Chrome need
 
 # 1. dev server for the interaction suites
 npm run dev -- --port 5173 --host 0.0.0.0
-python3 tools/browser-check.py        # 66 checks
+python3 tools/browser-check.py        # 79 checks
 python3 tools/e2e-check.py            # 72 checks (mocked APIs)
 
 # 1b. …or the same suites against the built bundle (what actually deploys)
 npm run build && npm run preview -- --port 4173 &
-KF_BASE=http://localhost:4173 python3 tools/browser-check.py   # 51 checks + 12 dev-only skips
+KF_BASE=http://localhost:4173 python3 tools/browser-check.py   # 64 checks + 12 dev-only skips
 KF_BASE=http://localhost:4173 python3 tools/e2e-check.py       # 72 checks
 python3 tools/a11y-check.py           # axe-core, dark theme
 KF_THEME=light python3 tools/a11y-check.py

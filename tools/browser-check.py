@@ -627,8 +627,164 @@ async def main():
         )
         await asyncio.sleep(0.3)
 
+        # ── Update dropdown (drops from the header, not the page) ────
+        print("\n11. Update dropdown (from the header)")
+        await tab.send_command(
+            "Emulation.setDeviceMetricsOverride",
+            {"width": 1440, "height": 900, "deviceScaleFactor": 1, "mobile": False},
+        )
+        await tab.send_command("Page.navigate", {"url": URL})
+        await asyncio.sleep(2.5)
+        before = await evaluate(
+            tab,
+            """JSON.stringify({ h: document.body.scrollHeight,
+                 hero: Math.round(document.querySelector('h1') ? document.querySelector('h1').getBoundingClientRect().top : -1) })""",
+        )
+        # headless Chrome never receives a real SW update, so synthesize the event
+        await evaluate(
+            tab,
+            "(() => { window.dispatchEvent(new CustomEvent('sw-update-available')); return true; })()",
+        )
+        await asyncio.sleep(0.6)
+        pop = await evaluate(
+            tab,
+            """(() => {
+              const el = document.querySelector('.kf-update-pop');
+              if (!el) return { shown: false };
+              const r = el.getBoundingClientRect();
+              const header = document.querySelector('header').getBoundingClientRect();
+              const h1 = document.querySelector('h1');
+              const hit = (a, c) => a.left < c.right && c.left < a.right && a.top < c.bottom && c.top < a.bottom;
+              const btns = [...el.querySelectorAll('button')].map(b => ({
+                t: b.textContent.trim(), top: Math.round(b.getBoundingClientRect().top),
+              }));
+              return {
+                shown: true,
+                pos: getComputedStyle(el).position,
+                topGap: Math.round(r.top - header.bottom),
+                rightGap: Math.round(window.innerWidth - r.right),
+                inside: r.left >= 0 && r.right <= window.innerWidth + 1 && r.top >= 0,
+                coversHero: h1 ? hit(r, h1.getBoundingClientRect()) : false,
+                oneRow: btns.length === 2 && Math.abs(btns[0].top - btns[1].top) <= 2,
+                labels: btns.map(b => b.t),
+                h: Math.round(r.height),
+              };
+            })()""",
+        )
+        pp = pop or {}
+        check("update dropdown appears on sw-update-available", pp.get("shown") is True)
+        check("update dropdown is fixed, not in the page flow", pp.get("pos") == "fixed", str(pp.get("pos")))
+        check(
+            "update dropdown hangs off the header",
+            isinstance(pp.get("topGap"), int) and 0 <= pp.get("topGap") <= 16,
+            f"{pp.get('topGap')}px below the header",
+        )
+        after = await evaluate(
+            tab,
+            """JSON.stringify({ h: document.body.scrollHeight,
+                 hero: Math.round(document.querySelector('h1') ? document.querySelector('h1').getBoundingClientRect().top : -1) })""",
+        )
+        check(
+            "update dropdown pushes nothing (page unchanged)",
+            before == after,
+            f"{before} → {after}",
+        )
+        check(
+            "update dropdown clears the hero headline on desktop",
+            pp.get("coversHero") is False and pp.get("inside") is True,
+        )
+        check(
+            "Update Now + Later sit on one row",
+            pp.get("oneRow") is True,
+            str(pp.get("labels")),
+        )
+        check("update dropdown is compact", isinstance(pp.get("h"), int) and pp.get("h") <= 80, f"{pp.get('h')}px tall")
+
+        # phone: full-width under the header, both actions equal width, one row
+        await tab.send_command(
+            "Emulation.setDeviceMetricsOverride",
+            {"width": 390, "height": 844, "deviceScaleFactor": 3, "mobile": True},
+        )
+        await asyncio.sleep(0.5)
+        phone = await evaluate(
+            tab,
+            """(() => {
+              const el = document.querySelector('.kf-update-pop');
+              if (!el) return { shown: false };
+              const r = el.getBoundingClientRect();
+              const btns = [...el.querySelectorAll('button')].map(b => b.getBoundingClientRect());
+              return {
+                shown: true,
+                inset: Math.round(r.left) >= 8 && Math.round(window.innerWidth - r.right) >= 8,
+                oneRow: btns.length === 2 && Math.abs(btns[0].top - btns[1].top) <= 2,
+                equal: btns.length === 2 && Math.abs(btns[0].width - btns[1].width) <= 2,
+                noOverflow: el.scrollWidth - el.clientWidth <= 0,
+              };
+            })()""",
+        )
+        ph = phone or {}
+        check(
+            "update dropdown fits a 390px phone",
+            ph.get("shown") is True and ph.get("inset") is True and ph.get("noOverflow") is True,
+        )
+        controls = await evaluate(
+            tab,
+            """(() => {
+              const el = document.querySelector('.kf-update-pop');
+              if (!el) return { ok: false };
+              const r = el.getBoundingClientRect();
+              const hit = (c) => c && r.left < c.right && c.left < r.right && r.top < c.bottom && c.top < r.bottom;
+              const input = document.getElementById('kf-hero-url');
+              const submit = document.querySelector('button[type=submit]');
+              return {
+                ok: true,
+                overInput: hit(input && input.getBoundingClientRect()),
+                overSubmit: hit(submit && submit.getBoundingClientRect()),
+              };
+            })()""",
+        )
+        ct = controls or {}
+        check(
+            "update dropdown never covers the hero's controls",
+            ct.get("ok") is True and ct.get("overInput") is False and ct.get("overSubmit") is False,
+            f"input {ct.get('overInput')}, generate {ct.get('overSubmit')}",
+        )
+        check(
+            "phone actions share one row at equal width",
+            ph.get("oneRow") is True and ph.get("equal") is True,
+        )
+        await screenshot(tab, "17-update-dropdown.png")
+
+        # “Later” dismisses it
+        await evaluate(
+            tab,
+            """(() => { const b = [...document.querySelectorAll('.kf-update-pop button')].find(x => x.textContent.trim() === 'Later'); b.click(); return true; })()""",
+        )
+        await asyncio.sleep(0.5)
+        check(
+            "Later dismisses the update dropdown",
+            pp.get("shown") is True and not await evaluate(tab, "!!document.querySelector('.kf-update-pop')"),
+        )
+
+        # Escape dismisses it too
+        await evaluate(
+            tab,
+            "(() => { window.dispatchEvent(new CustomEvent('sw-update-available')); return true; })()",
+        )
+        await asyncio.sleep(0.5)
+        came_back = await evaluate(tab, "!!document.querySelector('.kf-update-pop')")
+        check("update dropdown can come back", came_back is True)
+        await tab.send_command(
+            "Input.dispatchKeyEvent", {"type": "keyDown", "key": "Escape", "code": "Escape", "windowsVirtualKeyCode": 27, "nativeVirtualKeyCode": 27},
+        )
+        await asyncio.sleep(0.5)
+        check(
+            "Escape dismisses the update dropdown",
+            came_back is True and not await evaluate(tab, "!!document.querySelector('.kf-update-pop')"),
+        )
+
         # ── Clear All Data (destructive, so it runs last) ────────────
-        print("\n11. Clear All Data")
+        print("\n12. Clear All Data")
         await tab.send_command(
             "Emulation.setDeviceMetricsOverride",
             {"width": 1440, "height": 900, "deviceScaleFactor": 1, "mobile": False},

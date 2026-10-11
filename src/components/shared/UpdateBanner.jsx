@@ -1,8 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Sparkles, X } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 
 /**
  * Section 8.7 — listens for 'sw-update-available', offers an immediate reload.
+ *
+ * Shaped as a small dropdown anchored under the header (fixed, right-aligned
+ * on desktop, full-width-with-margins on phones) rather than a sticky
+ * full-bleed bar: an update notice is not part of the page, so it must not sit
+ * in the landing page's flow, push the hero down, or be mistaken for content.
+ * Escape and “Later” both dismiss it for this session.
  */
 export default function UpdateBanner({ onToast }) {
   const [waiting, setWaiting] = useState(null);
@@ -11,7 +17,10 @@ export default function UpdateBanner({ onToast }) {
 
   useEffect(() => {
     const onUpdate = (event) => {
-      setWaiting(event.detail?.registration || null);
+      // The event itself is the signal; the registration is only needed to
+      // message the waiting worker, so an event without one still shows the
+      // dropdown (and Update Now falls back to a plain reload).
+      setWaiting(event.detail?.registration ?? {});
       setHidden(false);
     };
     window.addEventListener('sw-update-available', onUpdate);
@@ -37,7 +46,18 @@ export default function UpdateBanner({ onToast }) {
     };
   }, [updating]);
 
-  if (!waiting || hidden) return null;
+  const visible = Boolean(waiting) && !hidden;
+
+  useEffect(() => {
+    if (!visible) return undefined;
+    const onKey = (event) => {
+      if (event.key === 'Escape') setHidden(true);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [visible]);
+
+  if (!visible) return null;
 
   const updateNow = () => {
     setUpdating(true);
@@ -49,44 +69,36 @@ export default function UpdateBanner({ onToast }) {
 
   return (
     <div
-      role="status"
-      className="kf-anim-fade"
-      style={{
-        position: 'sticky',
-        top: 64,
-        zIndex: 190,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 12,
-        padding: '10px 16px',
-        background: 'var(--accent-primary)',
-        color: '#fff',
-        fontFamily: 'var(--font-body)',
-        fontSize: 14,
-        flexWrap: 'wrap',
-        justifyContent: 'center',
-      }}
+      role="region"
+      aria-label="App update available"
+      className="kf-update-pop kf-anim-drop"
     >
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-        <Sparkles size={16} /> A new version of Keyframe is ready
+      <span aria-hidden="true" className="kf-update-pop__icon">
+        <Sparkles size={16} />
       </span>
-      <button
-        type="button"
-        className="kf-btn kf-btn--sm"
-        style={{ background: '#fff', color: 'var(--accent-primary)' }}
-        onClick={updateNow}
-        disabled={updating}
-      >
-        {updating ? 'Updating…' : 'Update Now'}
-      </button>
-      <button
-        type="button"
-        className="kf-btn kf-btn--sm kf-btn--ghost"
-        style={{ color: '#fff' }}
-        onClick={() => setHidden(true)}
-      >
-        Later
-      </button>
+
+      <div className="kf-update-pop__text">
+        <p className="kf-update-pop__title">Update available</p>
+        <p className="kf-update-pop__body">A new version of Keyframe is ready.</p>
+      </div>
+
+      <div className="kf-update-pop__actions">
+        <button
+          type="button"
+          className="kf-btn kf-btn--primary kf-btn--sm"
+          onClick={updateNow}
+          disabled={updating}
+        >
+          {updating ? 'Updating…' : 'Update Now'}
+        </button>
+        <button
+          type="button"
+          className="kf-btn kf-btn--ghost kf-btn--sm"
+          onClick={() => setHidden(true)}
+        >
+          Later
+        </button>
+      </div>
     </div>
   );
 }
