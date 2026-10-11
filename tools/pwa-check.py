@@ -165,15 +165,45 @@ async def main():
             await asyncio.sleep(1.2)
 
             await tab.send_command("Page.navigate", {"url": BASE + "some-route-not-cached"})
-            await asyncio.sleep(3)
-            offline_txt = (await ev(tab, "document.body ? document.body.innerText : ''")) or ""
+            # This sandbox can take several seconds to wake the SW on a cold boot,
+            # so poll instead of assuming a fixed delay is enough.
+            offline_txt = ""
+            for _ in range(40):
+                await asyncio.sleep(0.5)
+                offline_txt = (await ev(tab, "document.body ? document.body.innerText : ''")) or ""
+                if "You're offline" in offline_txt:
+                    break
             check("unknown route → offline.html", "You're offline" in offline_txt, offline_txt[:40].replace("\n", " "))
             check("offline.html shows Try Again", "Try Again" in offline_txt)
             check("offline.html mentions offline history", "history works offline" in offline_txt)
 
             await tab.send_command("Page.navigate", {"url": BASE})
-            await asyncio.sleep(4)
-            app_txt = (await ev(tab, "document.body ? document.body.innerText : ''")) or ""
+            # Poll for the cached shell to mount. Booting the React app from the
+            # SW cache normally takes ~2s, but this sandbox can starve the
+            # service worker for tens of seconds under load, so poll generously
+            # and report diagnostics instead of failing on a fixed sleep.
+            app_txt = ""
+            for _ in range(40):
+                await asyncio.sleep(1)
+                app_txt = (await ev(tab, "document.body ? document.body.innerText : ''")) or ""
+                if "Turn any app into a" in app_txt:
+                    break
+            if "Turn any app into a" not in app_txt:
+                diag = await ev(
+                    tab,
+                    """(async () => {
+                      const reg = await navigator.serviceWorker.getRegistration().catch(() => null);
+                      const res = await fetch('/').then(r => r.status + ' ' + r.type).catch(e => 'ERR ' + e.message);
+                      return JSON.stringify({
+                        controlled: !!navigator.serviceWorker.controller,
+                        swState: reg && reg.active ? reg.active.state : 'none',
+                        fetchRoot: res,
+                        readyState: document.readyState,
+                        rootLen: document.getElementById('root') ? document.getElementById('root').innerHTML.length : -1,
+                      });
+                    })()""",
+                )
+                print('  (shell boot diagnostics:', diag, ')')
             href = await ev(tab, "location.href")
             check("cached shell boots with no server", "Turn any app into a" in app_txt, f"{href} :: {app_txt[:40].replace(chr(10), ' ')}")
             check("app interactive offline", await ev(tab, "!!document.getElementById('kf-hero-url')") is True)

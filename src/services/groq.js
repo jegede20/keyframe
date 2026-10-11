@@ -9,9 +9,17 @@ import { buildFullPrompt } from './promptBuilder.js';
 import { parseAndValidateOutput } from './outputParser.js';
 import { KF_KEYS, readLS } from '../store/storage.js';
 
+/**
+ * Groq decommissioned llama-3.3-70b-versatile and llama3-8b-8192 (the models in
+ * the original spec), so Keyframe now runs on the current gpt-oss family:
+ * the 120b writes the script, the 20b takes over on a 429 (separate quota
+ * bucket, and faster). Both are reasoning models, so we pin reasoning_effort
+ * to 'low' — otherwise the thinking tokens eat the max_tokens budget and the
+ * JSON output gets truncated.
+ */
 export const GROQ_MODELS = [
-  { id: 'llama-3.3-70b-versatile', contextWindow: 128000 }, // primary
-  { id: 'llama3-8b-8192', contextWindow: 8192 }, // fallback
+  { id: 'openai/gpt-oss-120b', contextWindow: 131072, reasoningEffort: 'low' }, // primary
+  { id: 'openai/gpt-oss-20b', contextWindow: 131072, reasoningEffort: 'low' }, // fallback on 429
 ];
 
 export const GROQ_ENDPOINT = 'https://api.groq.com/openai/v1/chat/completions';
@@ -45,11 +53,25 @@ export function hasUsableApiKey() {
   }
 }
 
+/**
+ * Groq's free tier allows 8,000 tokens per minute per model (RPM 1,000), and the
+ * TPM check counts prompt + max_tokens together. With max_tokens 3000 and ~1.2k
+ * tokens of instructions, the scraped page has to fit in roughly 3.5k tokens
+ * (~14k characters). Both current models have 131k context windows, so TPM — not
+ * context length — is the binding constraint. Headings survive the trim in full
+ * (they drive screen names); only the body prose is shortened.
+ */
+const PROMPT_CHAR_BUDGET = 14000;
+
 function trimForModel(jinaResult, model) {
-  if (model.contextWindow >= 32000) return jinaResult;
+  const windowChars = Math.floor(model.contextWindow * 3); // 4 chars/token, 25% headroom
+  const budget = Math.min(PROMPT_CHAR_BUDGET, windowChars);
+  const cleaned = String(jinaResult.cleaned || '');
+  if (cleaned.length <= budget) return jinaResult;
   const trimmed = {
     ...jinaResult,
-    cleaned: String(jinaResult.cleaned || '').slice(0, 20000),
+    cleaned: cleaned.slice(0, budget),
+    trimmed: true,
   };
   trimmed.charCount = trimmed.cleaned.length;
   trimmed.estimatedTokens = Math.ceil(trimmed.charCount / 4);
@@ -85,8 +107,9 @@ export async function generateScript(appUrl, userInputs, jinaResult, apiKey, mod
         model: model.id,
         messages,
         temperature: 0.4,
-        max_tokens: 4000,
+        max_tokens: 3000, // keeps prompt + completion inside the 8k TPM budget
         response_format: { type: 'json_object' },
+        ...(model.reasoningEffort ? { reasoning_effort: model.reasoningEffort } : {}),
         stream: false,
       }),
       signal,
@@ -154,8 +177,9 @@ export async function generateWithFallback(appUrl, userInputs, jinaResult, apiKe
 }
 
 /**
- * validateApiKey(key) — the lightweight Settings test call.
- * Sends a 1-token request; returns { valid, error }.
+ * validateApiKey(key) — lightweight key probe kept for the dev harness and
+ * tests (the Settings key field has been removed now that the app ships with
+ * its own bundled key). Sends a 1-token request; returns { valid, error }.
  */
 export async function validateApiKey(key) {
   const value = String(key || '').trim();

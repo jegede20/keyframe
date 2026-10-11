@@ -36,37 +36,43 @@ def rounded_mask(size, radius, scale=4):
     d.rounded_rectangle([0, 0, w - 1, w - 1], radius=radius * scale, fill=255)
     return m.resize((size, size), Image.LANCZOS)
 
-def draw_keyframe_mark(d, size, pad_ratio, accent=ACCENT, tri_color=WHITE):
-    """Keyframe brackets + play triangle, centred in a size×size box."""
-    s = size
-    inset = s * pad_ratio
-    box = [inset, inset, s - inset, s - inset]
-    bw = max(2, int(s * 0.055))          # bracket stroke width
-    bl = (box[2] - box[0]) * 0.30        # bracket arm length
-    x0, y0, x1, y1 = box
-    r = s * 0.045
+def draw_keyframe_mark(d, size_or_box, pad_ratio=0.0, accent=ACCENT, diamond_color=WHITE, scale=1.0):
+    """Keyframe mark: a diamond pinned to a timeline track.
 
-    def arm(pts):
-        d.line(pts, fill=accent, width=bw, joint='curve')
-        for p in pts:
-            d.ellipse([p[0]-bw/2, p[1]-bw/2, p[0]+bw/2, p[1]+bw/2], fill=accent)
+    Mirrors src/components/shared/Logo.jsx and tools/shot_templates.py — a
+    keyframe diamond (white) on a dim accent track with accent end markers.
 
-    # top-left
-    arm([(x0, y0 + r + bl), (x0, y0 + r), (x0 + r, y0), (x0 + r + bl, y0)])
-    # top-right
-    arm([(x1 - r - bl, y0), (x1 - r, y0), (x1, y0 + r), (x1, y0 + r + bl)])
-    # bottom-left
-    arm([(x0, y1 - r - bl), (x0, y1 - r), (x0 + r, y1), (x0 + r + bl, y1)])
-    # bottom-right
-    arm([(x1 - r - bl, y1), (x1 - r, y1), (x1, y1 - r), (x1, y1 - r - bl)])
+    size_or_box: tile size (int) or (x0, y0, x1, y1) box.
+    scale: shrinks the whole mark around the box centre (for maskable safe zones).
+    """
+    if isinstance(size_or_box, (tuple, list)):
+        x0, y0, x1, y1 = [float(v) for v in size_or_box]
+    else:
+        inset = size_or_box * pad_ratio
+        x0, y0, x1, y1 = inset, inset, size_or_box - inset, size_or_box - inset
 
-    # play triangle
-    cx, cy = s * 0.5, s * 0.5
-    tw = (box[2] - box[0]) * 0.30
-    th = tw * 1.16
-    off = tw * 0.10
-    tri = [(cx - tw/2 + off, cy - th/2), (cx + tw/2 + off, cy), (cx - tw/2 + off, cy + th/2)]
-    d.polygon(tri, fill=tri_color)
+    cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+    w = (x1 - x0) * scale
+    h = (y1 - y0) * scale
+
+    track_w = max(2, int(min(w, h) * 0.075))
+    dot_r = min(w, h) * 0.068
+    half = min(w, h) * 0.225 * 2  # diamond half-diagonal (matches the 32-unit SVG)
+
+    # track — dim accent, ends short of the markers
+    d.line(
+        [(cx - w * 0.40 + dot_r * 0.6, cy), (cx + w * 0.40 - dot_r * 0.6, cy)],
+        fill=lerp(BG, accent, 0.5),
+        width=track_w,
+    )
+    # end markers
+    for px in (cx - w * 0.42, cx + w * 0.42):
+        d.ellipse([px - dot_r, cy - dot_r, px + dot_r, cy + dot_r], fill=lerp(accent, WHITE, 0.2))
+    # the keyframe diamond
+    d.polygon(
+        [(cx, cy - half), (cx + half, cy), (cx, cy + half), (cx - half, cy)],
+        fill=diamond_color,
+    )
 
 def make_icon(size, maskable=False, radius_ratio=0.22):
     ss = 4
@@ -75,12 +81,11 @@ def make_icon(size, maskable=False, radius_ratio=0.22):
     base = radial_glow(base, big * 0.5, big * 0.44, big * 0.66, ACCENT, 105)
     d = ImageDraw.Draw(base)
     # subtle inner surface frame
-    pad = big * (0.14 if maskable else 0.0)
     d.rounded_rectangle(
         [big*0.06, big*0.06, big*0.94, big*0.94],
         radius=big*0.18, outline=lerp(SURF, ACCENT, 0.25), width=max(2, int(big*0.004))
     )
-    draw_keyframe_mark(d, big, 0.30 if maskable else 0.235, ACCENT_LIGHT)
+    draw_keyframe_mark(d, (0, 0, big, big), scale=0.54 if maskable else 0.66)
     img = base.resize((size, size), Image.LANCZOS)
     if maskable:
         return img  # full-bleed art; platform applies the mask itself

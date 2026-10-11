@@ -15,7 +15,7 @@ history and settings live on your device.
 ```
         ┌────────────┐     ┌──────────────┐     ┌───────────────┐
 URL ───▶│  r.jina.ai │────▶│  prompt 4    │────▶│  api.groq.com │───▶ script
-        │  (reader)  │     │  layers      │     │ llama-3.3-70b │     JSON
+        │  (reader)  │     │  layers      │     │ gpt-oss-120b  │     JSON
         └────────────┘     └──────────────┘     └───────────────┘
               ▲                                        │
               └──────── both calls go straight from the browser ────────┘
@@ -26,8 +26,11 @@ URL ───▶│  r.jina.ai │────▶│  prompt 4    │───�
    lines; caps at 48,000 chars; extracts H1–H3 headings as candidate "screens".
 3. **Four-layer prompt** — system director rules, scraped context, your brief
    (features, length, tone, video tool), and a strict JSON output contract.
-4. **Groq** — `llama-3.3-70b-versatile`, `temperature 0.4`, JSON mode,
-   auto-fallback to `llama3-8b-8192` on `429`.
+4. **Groq** — `openai/gpt-oss-120b`, `temperature 0.4`, JSON mode, and
+   `reasoning_effort: 'low'` so the model's thinking budget can't crowd out the
+   script. A `429` walks down to `openai/gpt-oss-20b` (a separate quota bucket).
+   *(Groq retired the llama-3.3-70b-versatile / llama3-8b-8192 pair the original
+   spec named — the gpt-oss family is what the free tier serves now.)*
 5. **Validator + timing repair** — the parser guarantees durations sum to the
    exact requested length, fills missing fields with placeholders instead of
    crashing, and re-derives every `timeStart`/`timeEnd` from 0:00.
@@ -41,7 +44,7 @@ URL ───▶│  r.jina.ai │────▶│  prompt 4    │───�
 | PWA | Custom `sw.js` + `vite-plugin-pwa` (`injectManifest`) |
 | Storage | `localStorage` (settings, inputs, history index) + IndexedDB (full scripts, custom adapter) |
 | URL reading | Jina AI Reader — `https://r.jina.ai/{url}` |
-| AI | Groq — `llama-3.3-70b-versatile` (fallback `llama3-8b-8192`) |
+| AI | Groq — `openai/gpt-oss-120b` (fallback `openai/gpt-oss-20b`) |
 | Icons | Lucide React |
 | Hosting | Cloudflare Pages (free tier) |
 
@@ -56,13 +59,18 @@ npm run build && npm run preview
 
 ### The API key
 
-`VITE_GROQ_API_KEY` is the app's built-in key (bundled into the client, so it is
-public — get one free at <https://console.groq.com/keys>). Users can paste their
-own key in **Settings → API Key**; it is validated with a tiny test call and kept
-in `localStorage` on their device only. A user key always wins over the built-in one.
+`VITE_GROQ_API_KEY` is the app's key (bundled into the client, so it is public —
+get one free at <https://console.groq.com/keys>). There is no key field in the
+UI: visitors just generate. Put a real key in `.env` (or the host's environment
+variables) before building or every generation fails with the "key rejected"
+error card.
 
-> Without any key the app still runs; the first generation shows the
-> "Invalid API key — check it in Settings" error box instead of crashing.
+**Free-tier budget.** TPM is 8,000 per model, and Groq counts prompt +
+`max_tokens` against it, so Keyframe trims the scraped page to ~14k characters
+(body prose only — headings, which become screen names, always survive) and asks
+for at most 3,000 completion tokens. That leaves room for roughly 8 generations
+per minute in total. A `429` on the 120b model retries on the 20b model
+automatically.
 
 ## Dev console test harness (Step 33)
 

@@ -30,8 +30,9 @@ git push -u origin main
    | --- | --- |
    | `VITE_GROQ_API_KEY` | your `gsk_…` key from console.groq.com |
 
-   Without it, the app builds and runs but the first generation shows the
-   "Invalid API key" error box — users would have to bring their own key.
+   **This one is required.** It is the key every visitor generates with, and
+   there is no in-app field to paste one — without it, generation always ends in
+   the "key rejected" card.
 
 5. Deploy. You get `https://<project>.pages.dev` (HTTPS included).
 
@@ -45,10 +46,10 @@ immutable for a year, `/assets/*` etc. The SPA redirect rewrites everything to
 - [ ] `https://<project>.pages.dev` loads and the hero renders.
 - [ ] Chrome desktop shows the **Install** icon in the address bar (PWA installable).
 - [ ] DevTools → Application → Service Workers shows `sw.js` **activated** and running.
-- [ ] DevTools → Application → Cache Storage shows `keyframe-v1.0.0-shell` (20 entries).
+- [ ] DevTools → Application → Cache Storage shows `keyframe-v1.0.0-shell` (21 entries).
 - [ ] DevTools → Network → set **Offline**, reload `/?action=history` — the app boots
       offline from cache and history still works; unknown routes render `offline.html`.
-- [ ] Generate one real script with your Groq key; then Settings → Export History (JSON) downloads.
+- [ ] Generate a real script end to end, then Settings → Export History (JSON) downloads.
 - [ ] Mobile: Android Chrome install prompt appears; iOS Safari shows the
       "Add to Home Screen" instructions banner instead.
 - [ ] Push a trivial change → the **"A new version of Keyframe is ready"** banner
@@ -102,10 +103,12 @@ exec <chrome-path> \
 
 ## Notes
 
-- **The built-in key is public.** Anything prefixed `VITE_` ends up in the JS
-  bundle. Keep a low quota on it and rotate it if abused; users can always paste
-  their own key in Settings.
-- **Token budget per generation** ≈ 4,250 in / 2,900 out, comfortably inside the
-  free tier (30 RPM · 14,400 RPD · 6,000 TPM).
+- **The bundled key is public.** Anything prefixed `VITE_` ends up in the JS
+  bundle, so anyone can read it out. It is rate-limited to the free tier, and
+  Keyframe's own guardrails (≈3.5k-token prompt, 3,000-token cap) keep each
+  generation inside an 8,000 TPM model budget. Rotate it if it ever gets abused.
+- **Model choice.** `openai/gpt-oss-120b` writes the script; a `429` falls back
+  to `openai/gpt-oss-20b`. If Groq retires either model, edit `GROQ_MODELS` in
+  `src/services/groq.js` — the rest of the pipeline is model-agnostic.
 - **Updating the SW version:** bump `SW_VERSION` in `public/sw.js` (e.g.
   `keyframe-v1.0.1`). The activate handler deletes every older `keyframe-*` cache.

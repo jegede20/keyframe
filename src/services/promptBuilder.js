@@ -156,7 +156,7 @@ Start with { and end with }. Exact structure:
   ],
   "videoPrompt": {
     "target": "string",
-    "fullPrompt": "string — 300–600 words, fully self-contained"
+    "fullPrompt": "string — 320–560 words of continuous prose, fully self-contained"
   }
 }
 
@@ -165,6 +165,11 @@ FINAL CHECKS BEFORE YOU ANSWER:
 - timeStart of shot 1 is "0:00"; timeEnd of the final shot equals the total as M:SS.
 - Narration word counts obey 130 words/minute for each shot.
 - cutList length is between 2 and 8 and every screenName exists in the scraped content.
+- The videoPrompt.fullPrompt is ONGOING PROSE of at least 300 words. Spell out: the
+  visual style (gradient, palette, depth, lighting), the UI motion and camera feel
+  (e.g. "slow 4% push-in", "cursor glides, never jumps"), pacing and cut rhythm, and a
+  beat-by-beat pass through every shot in order. Long and specific is correct here —
+  a one-paragraph summary is a FAILED answer.
 - No invented screens, no filler opening lines, valid JSON only.`;
 
 /**

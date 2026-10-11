@@ -7,6 +7,79 @@ import { PARSE_ERROR } from './errorClassifier.js';
 import { repairTimings, secondsToTimestamp } from '../utils/timing.js';
 import { countWords } from '../utils/wordCount.js';
 
+/* ── videoPrompt length window (300–600 words) ─────────────────────────── */
+const VIDEO_PROMPT_MIN = 300;
+const VIDEO_PROMPT_MAX = 600;
+
+const DELIVERY_NOTES = [
+  '',
+  'DELIVERY NOTES',
+  '- Aspect: 16:9 master at 1080p; render a 9:16 vertical crop for Shorts, Reels and TikTok.',
+  '- Motion: continuous, confident moves — slow pushes and short glides, cut on action.',
+  '- Pacing: every UI change resolves before the next one begins; no dead frames.',
+  '- Legibility: keep the interface at 100% scale — never shrink the UI to fit two screens at once.',
+  '- Text: burn captions from the voiceover lines above, inside the title-safe area.',
+  '- Audio: clean voiceover over a restrained electronic bed, with quiet, audible UI clicks.',
+];
+
+const PACING_CLOSER = [
+  '',
+  'Overall rhythm: open on the strongest visual moment, settle into a steady two-to-three',
+  'second cut rhythm across the feature screens, then finish on the closing beat with the app',
+  'name held on screen for a full second of silence before the cut to black. Keep every',
+  'transition in one visual language so the sequence reads as a single continuous take',
+  'rather than a stitched reel of separate clips.',
+];
+
+/** One line per shot — used only when the model under-delivers on prompt length. */
+function shotRundownLines(script) {
+  const lines = ['', 'SHOT-BY-SHOT RUNDOWN (match these beats in order)'];
+  (script || []).forEach((shot, index) => {
+    const number = shot.shotNumber ?? index + 1;
+    const label = shot.label || `SHOT ${number}`;
+    const beats = [];
+    if (shot.screen) beats.push(`on ${shot.screen}`);
+    if (shot.action) beats.push(String(shot.action).trim().replace(/\.$/, ''));
+    if (shot.narration) beats.push(`Voiceover: “${String(shot.narration).trim()}”`);
+    lines.push(
+      `${number}. ${shot.timeStart || '0:00'}–${shot.timeEnd || ''} — ${label}: ${beats.join('. ')}.`
+    );
+  });
+  return lines;
+}
+
+function padVideoPrompt(text, script, target) {
+  const parts = [String(text).trim()];
+  const sections = [
+    shotRundownLines(script),
+    DELIVERY_NOTES,
+    PACING_CLOSER,
+  ];
+  for (const section of sections) {
+    for (const line of section) {
+      parts.push(line);
+      if (countWords(parts.join(' ')) >= VIDEO_PROMPT_MIN) {
+        return parts.join('\n');
+      }
+    }
+  }
+  return parts.join('\n');
+}
+
+function trimToWordBudget(text, budget) {
+  const sentences = String(text).match(/[^.!?]+[.!?]+\s*/g) || [String(text)];
+  const kept = [];
+  let used = 0;
+  for (const sentence of sentences) {
+    const words = countWords(sentence);
+    if (used + words > budget && kept.length) break;
+    kept.push(sentence.trim());
+    used += words;
+    if (used >= budget) break;
+  }
+  return kept.length ? kept.join(' ') : String(text).trim();
+}
+
 const REQUIRED_KEYS = ['meta', 'script', 'cutList', 'videoPrompt'];
 const REQUIRED_SHOT_FIELDS = [
   'shotNumber',
@@ -188,6 +261,27 @@ export function parseAndValidateOutput(rawContent) {
     warnings.push('videoPrompt.fullPrompt missing or too short — placeholder inserted.');
     parsed.videoPrompt.fullPrompt =
       'ERROR: the AI did not return a usable video prompt for this generation. Regenerate the script, or copy the shot list above straight into your editor.';
+  }
+
+  /* Step 7b — hold the prompt inside the 300–600 word window */
+  const promptMissing = parsed.videoPrompt.fullPrompt.startsWith('ERROR:');
+  if (!promptMissing) {
+    const promptWords = countWords(parsed.videoPrompt.fullPrompt);
+    if (promptWords < VIDEO_PROMPT_MIN) {
+      parsed.videoPrompt.fullPrompt = padVideoPrompt(
+        parsed.videoPrompt.fullPrompt,
+        parsed.script,
+        parsed.videoPrompt.target
+      );
+      warnings.push(
+        `videoPrompt was ${promptWords} words — a shot rundown and delivery notes were appended to reach the ${VIDEO_PROMPT_MIN}-word minimum.`
+      );
+    } else if (promptWords > VIDEO_PROMPT_MAX) {
+      parsed.videoPrompt.fullPrompt = trimToWordBudget(parsed.videoPrompt.fullPrompt, VIDEO_PROMPT_MAX);
+      warnings.push(
+        `videoPrompt was ${promptWords} words — trimmed to the ${VIDEO_PROMPT_MAX}-word limit at a sentence boundary.`
+      );
+    }
   }
 
   /* Step 8 — hand back the validated object */

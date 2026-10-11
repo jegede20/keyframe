@@ -90,7 +90,8 @@ async def main():
         check("bento features rendered", await evaluate(tab, "document.body.innerText.includes('Shot-by-Shot Script')"))
         check("output preview rendered", await evaluate(tab, "document.body.innerText.includes('This is what you get back')"))
         check("faq rendered", await evaluate(tab, "document.body.innerText.includes('Is Keyframe really free?')"))
-        check("footer rendered", await evaluate(tab, "document.body.innerText.includes('free tiers')"))
+        check("footer rendered", await evaluate(tab, "document.body.innerText.includes('Paste a link, shoot the demo.')"))
+        check("footer has no GitHub link", await evaluate(tab, "![...document.querySelectorAll('footer a')].some(a => /github/i.test(a.textContent))"))
         check("no console errors on load", len(console_errors) == 0, "; ".join(console_errors[:2]))
 
         await screenshot(tab, "01-landing-desktop.png")
@@ -149,7 +150,8 @@ async def main():
             })()""",
         )
         await asyncio.sleep(0.5)
-        check("settings opened", await evaluate(tab, "document.body.innerText.includes('Groq API Key')"))
+        check("settings opened", await evaluate(tab, "document.body.innerText.includes('Default Script Length')"))
+        check("settings has no API-key section", await evaluate(tab, "!document.body.innerText.includes('API Key')"))
         check("theme select present", await evaluate(tab, """!!document.querySelector('select')"""))
         # switch theme to light
         await evaluate(
@@ -292,12 +294,41 @@ async def main():
         persisted = await evaluate(tab, "JSON.parse(localStorage.getItem('kf_last_inputs') || '{}').url")
         check("last input persisted", persisted == "https://tailwindcss.com", str(persisted))
 
-        # ── Missing-key error path (no Groq key configured) ───────────
-        print("\n9. Hero entry → workspace, then error path (missing API key)")
+        # ── Error path — the only mocked call in this suite, so the 401
+        #    branch stays deterministic and never touches the real quota.
+        print("\n9. Hero entry → workspace, then error path (401 from Groq)")
         await evaluate(
             tab,
             """(() => {
-              localStorage.removeItem('kf_groq_key');
+              window.__kfRealFetch = window.__kfRealFetch || window.fetch.bind(window);
+              window.fetch = (input, init) => {
+                const url = typeof input === 'string' ? input : (input && input.url) || '';
+                if (url.includes('api.groq.com')) {
+                  return Promise.resolve(new Response(
+                    JSON.stringify({ error: { message: 'stubbed 401 for browser-check' } }),
+                    { status: 401, headers: { 'Content-Type': 'application/json' } }
+                  ));
+                }
+                if (url.includes('r.jina.ai')) {
+                  const md = [
+                    '# Stub Boards - project tracking for small teams',
+                    '',
+                    '## Home dashboard',
+                    'Live tiles for every project, updated in real time for the whole team to see.',
+                    '',
+                    '## Board view',
+                    'Drag cards between columns and every status change syncs instantly across devices.',
+                    '',
+                    '## Reports',
+                    'Filter by squad or sprint and spot bottlenecks before they slow the release down.',
+                    '',
+                    '## Settings',
+                    'Workspace preferences, notifications and billing all live on this screen.',
+                  ].join('\\n');
+                  return Promise.resolve(new Response(md, { status: 200, headers: { 'Content-Type': 'text/markdown' } }));
+                }
+                return window.__kfRealFetch(input, init);
+              };
               document.querySelector('button[type=submit]').click();
               return true;
             })()""",
@@ -328,14 +359,14 @@ async def main():
         )
         await asyncio.sleep(9)
         state_txt = await evaluate(tab, "document.body.innerText")
-        check("error box shown for missing key", "Invalid API key" in state_txt)
-        check("error box offers Settings action", "Open Settings" in state_txt)
+        check("error box shown on 401", "AI key rejected" in state_txt)
+        check("error box offers Retry action", "Try Again" in state_txt)
         check(
             "inputs preserved after error",
             await evaluate(tab, "document.getElementById('kf-main-url') ? document.getElementById('kf-main-url').value : ''") == "https://tailwindcss.com",
             str(await evaluate(tab, "document.getElementById('kf-main-url') ? document.getElementById('kf-main-url').value : 'missing'")),
         )
-        await screenshot(tab, "04-error-missing-key.png")
+        await screenshot(tab, "04-error-401.png")
 
         # ── Mobile viewport ──────────────────────────────────────────
         print("\n10. Mobile viewport (390×844)")

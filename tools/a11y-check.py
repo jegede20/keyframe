@@ -91,7 +91,6 @@ async def main():
             if (url.startsWith('https://api.groq.com/')) return new Response(JSON.stringify({choices:[{message:{content: JSON.stringify(window.__mock)}}]}), {status:200});
             return realFetch(input, init);
           };
-          localStorage.setItem('kf_groq_key','gsk_mock_key_for_a11y_x');
           return true;
         })()""" % json.dumps(SAMPLE_OUTPUT))
         await ev(tab, """(() => { const ta=document.getElementById('kf-main-features'); const s=Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype,'value').set; s.call(ta,'export, boards'); ta.dispatchEvent(new Event('input',{bubbles:true})); return true; })()""")

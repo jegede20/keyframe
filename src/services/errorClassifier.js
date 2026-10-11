@@ -26,19 +26,18 @@ export function classifyGroqStatus(status, body) {
     case 401:
       return {
         type: 'INVALID_API_KEY',
-        title: 'Invalid API key',
-        userMsg: 'Your Groq API key is invalid or expired. Check it in Settings.',
-        suggestion: 'Open Settings → API Key and paste a fresh key from console.groq.com.',
-        action: 'OPEN_SETTINGS',
+        title: 'AI key rejected',
+        userMsg: "Keyframe's built-in Groq key was rejected by the API.",
+        suggestion: 'Nothing to re-enter — this is service-side. Try again in a moment.',
+        action: 'RETRY',
       };
     case 429:
       return {
         type: 'RATE_LIMITED',
         title: 'Rate limit reached',
-        userMsg:
-          "You've hit the daily generation limit. Try again later, or add your own Groq API key in Settings.",
-        suggestion: detail || 'The free tier allows 30 requests per minute and 14,400 per day.',
-        action: 'OPEN_SETTINGS',
+        userMsg: "Keyframe's shared Groq quota is used up for this minute.",
+        suggestion: detail || 'It refills every 60 seconds — give it a few moments, then generate again.',
+        action: 'RETRY',
       };
     case 503:
       return {

@@ -218,14 +218,13 @@ async def main():
               await sleep(2400);
               return new Response(JSON.stringify({
                 id: 'mock',
-                model: 'llama-3.3-70b-versatile',
+                model: 'openai/gpt-oss-120b',
                 choices: [{ index: 0, message: { role: 'assistant', content: JSON.stringify(window.__mock) }, finish_reason: 'stop' }],
                 usage: { prompt_tokens: 4310, completion_tokens: 2890 }
               }), { status: 200, headers: { 'Content-Type': 'application/json' } });
             }
             return realFetch(input, init);
           };
-          localStorage.setItem('kf_groq_key', 'gsk_mock_key_for_e2e_verification');
           return true;
         })()
         """ % json.dumps(SAMPLE_OUTPUT)

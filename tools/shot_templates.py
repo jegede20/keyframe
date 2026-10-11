@@ -12,7 +12,7 @@ body {{ width: 1200px; height: 630px; background: #0A0A0F; color: #F0F0F5; {FONT
 .grid {{ position: absolute; inset: 0; opacity: .05;
   background-image: linear-gradient(to right, #F0F0F5 1px, transparent 1px), linear-gradient(to bottom, #F0F0F5 1px, transparent 1px);
   background-size: 64px 64px; }}
-.wrap {{ position: relative; display: flex; gap: 56px; align-items: center; padding: 0 72px; }}
+.wrap {{ position: relative; display: flex; gap: 56px; align-items: center; padding: 86px 72px 0; }}
 .left {{ max-width: 560px; }}
 .badge {{ display: inline-flex; gap: 8px; align-items: center; padding: 8px 16px; border-radius: 999px;
   background: #12121A; border: 1px solid #1E1E2E; color: #9494A8; font-size: 15px; font-weight: 500; margin-bottom: 26px; }}
@@ -34,17 +34,16 @@ p {{ margin-top: 20px; color: #9494A8; font-size: 20px; line-height: 1.5; }}
 .say {{ font-style: italic; color: #F0F0F5; }}
 .pace {{ margin-top: 16px; color: #5C5C72; font-size: 12px; {MONO} }}
 .logo {{ position: absolute; top: 40px; left: 72px; display: flex; gap: 10px; align-items: center; }}
-.logo .mark {{ color: #6C5CE7; font-size: 22px; }}
 .logo b {{ font-size: 24px; font-weight: 800; letter-spacing: -.4px; }}
 </style></head><body>
 <div class="glow"></div><div class="grid"></div>
-<div class="logo"><span class="mark">▶</span><b>Keyframe</b></div>
+<div class="logo"><svg width="22" height="22" viewBox="0 0 32 32" fill="none" style="flex-shrink:0"><path d="M3.6 16h24.8" stroke="#8B7CF6" stroke-width="2.2" stroke-linecap="round" opacity=".45"/><circle cx="5.4" cy="16" r="1.75" fill="#8B7CF6" opacity=".7"/><circle cx="26.6" cy="16" r="1.75" fill="#8B7CF6" opacity=".7"/><path d="M16 8.8 23.2 16 16 23.2 8.8 16Z" fill="#F0F0F5"/></svg><b>Keyframe</b></div>
 <div class="wrap">
   <div class="left">
     <div class="badge">⚡ Free · No sign-up</div>
     <h1>Turn any app into a <span>demo script</span> you can shoot today</h1>
     <p>Paste a link, list your features — get a shot-by-shot script with timing, narration, a cut list and a video AI prompt.</p>
-    <div class="urlbar"><div class="urlinput">https://your-app.com</div><div class="btn">▶ Generate Script</div></div>
+    <div class="urlbar"><div class="urlinput">https://your-app.com</div><div class="btn">✦ Generate Script</div></div>
   </div>
   <div class="shotcard">
     <div class="label">FEATURE 1</div>
@@ -63,7 +62,6 @@ body {{ width: 1280px; height: 720px; background: #0A0A0F; color: #F0F0F5; {FONT
   border-bottom: 1px solid #1E1E2E; background: rgba(10,10,15,.85); }}
 .nav .links {{ display: flex; gap: 28px; color: #9494A8; font-size: 14px; font-weight: 500; }}
 .logo {{ display: flex; gap: 8px; align-items: center; font-weight: 800; font-size: 20px; }}
-.logo .mark {{ color: #6C5CE7; }}
 .cta {{ background: #6C5CE7; color: #fff; padding: 10px 20px; border-radius: 999px; font-weight: 600; font-size: 14px; }}
 .main {{ position: relative; padding: 70px 56px 0; text-align: center; }}
 .glow {{ position: absolute; top: -220px; left: 50%; transform: translateX(-50%); width: 900px; height: 560px;
@@ -84,7 +82,7 @@ h1 span {{ color: #6C5CE7; }}
   font-size: 13px; background: #12121A; border: 1px solid #1E1E2E; border-radius: 12px; padding: 14px 22px; }}
 </style></head><body>
 <div class="nav">
-  <div class="logo"><span class="mark">▶</span>Keyframe</div>
+  <div class="logo"><svg width="22" height="22" viewBox="0 0 32 32" fill="none" style="flex-shrink:0"><path d="M3.6 16h24.8" stroke="#8B7CF6" stroke-width="2.2" stroke-linecap="round" opacity=".45"/><circle cx="5.4" cy="16" r="1.75" fill="#8B7CF6" opacity=".7"/><circle cx="26.6" cy="16" r="1.75" fill="#8B7CF6" opacity=".7"/><path d="M16 8.8 23.2 16 16 23.2 8.8 16Z" fill="#F0F0F5"/></svg>Keyframe</div>
   <div class="links"><span>How It Works</span><span>Features</span><span>FAQ</span></div>
   <div class="cta">Get Started →</div>
 </div>
@@ -106,7 +104,6 @@ MOBILE_HTML = f"""<!doctype html><html><head><meta charset="utf-8"><style>
 body {{ width: 390px; height: 844px; background: #0A0A0F; color: #F0F0F5; {FONT}; overflow: hidden; }}
 .nav {{ height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 1px solid #1E1E2E; }}
 .logo {{ display: flex; gap: 7px; align-items: center; font-weight: 800; font-size: 17px; }}
-.logo .mark {{ color: #6C5CE7; font-size: 15px; }}
 .icons {{ display: flex; gap: 14px; color: #9494A8; font-size: 17px; }}
 .summary {{ margin: 12px 16px; border: 1px solid #1E1E2E; border-radius: 12px; background: #12121A; padding: 11px 14px;
   display: flex; justify-content: space-between; align-items: center; color: #9494A8; font-size: 12px; {MONO} }}
@@ -131,7 +128,7 @@ body {{ width: 390px; height: 844px; background: #0A0A0F; color: #F0F0F5; {FONT}
 .b1 {{ background: #6C5CE7; color: #fff; }}
 .b2 {{ background: #12121A; border: 1px solid #1E1E2E; color: #F0F0F5; }}
 </style></head><body>
-<div class="nav"><div class="logo"><span class="mark">▶</span>Keyframe</div><div class="icons"><span>🕐</span><span>⚙️</span><span>☰</span></div></div>
+<div class="nav"><div class="logo"><svg width="22" height="22" viewBox="0 0 32 32" fill="none" style="flex-shrink:0"><path d="M3.6 16h24.8" stroke="#8B7CF6" stroke-width="2.2" stroke-linecap="round" opacity=".45"/><circle cx="5.4" cy="16" r="1.75" fill="#8B7CF6" opacity=".7"/><circle cx="26.6" cy="16" r="1.75" fill="#8B7CF6" opacity=".7"/><path d="M16 8.8 23.2 16 16 23.2 8.8 16Z" fill="#F0F0F5"/></svg>Keyframe</div><div class="icons"><span>🕐</span><span>⚙️</span><span>☰</span></div></div>
 <div class="summary"><span>acme.example · 3 features · 90s</span><b>✏️ Edit</b></div>
 <div class="tabs"><div class="tab on">Script</div><div class="tab">Cut List (3)</div><div class="tab">Prompt</div></div>
 <div class="stats">TOTAL: 90s · 8 shots · ~112 words</div>

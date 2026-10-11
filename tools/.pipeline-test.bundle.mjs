@@ -27,18 +27,18 @@ function classifyGroqStatus(status, body) {
     case 401:
       return {
         type: "INVALID_API_KEY",
-        title: "Invalid API key",
-        userMsg: "Your Groq API key is invalid or expired. Check it in Settings.",
-        suggestion: "Open Settings \u2192 API Key and paste a fresh key from console.groq.com.",
-        action: "OPEN_SETTINGS"
+        title: "AI key rejected",
+        userMsg: "Keyframe's built-in Groq key was rejected by the API.",
+        suggestion: "Nothing to re-enter \u2014 this is service-side. Try again in a moment.",
+        action: "RETRY"
       };
     case 429:
       return {
         type: "RATE_LIMITED",
         title: "Rate limit reached",
-        userMsg: "You've hit the daily generation limit. Try again later, or add your own Groq API key in Settings.",
-        suggestion: detail || "The free tier allows 30 requests per minute and 14,400 per day.",
-        action: "OPEN_SETTINGS"
+        userMsg: "Keyframe's shared Groq quota is used up for this minute.",
+        suggestion: detail || "It refills every 60 seconds \u2014 give it a few moments, then generate again.",
+        action: "RETRY"
       };
     case 503:
       return {
@@ -581,7 +581,7 @@ Start with { and end with }. Exact structure:
   ],
   "videoPrompt": {
     "target": "string",
-    "fullPrompt": "string \u2014 300\u2013600 words, fully self-contained"
+    "fullPrompt": "string \u2014 320\u2013560 words of continuous prose, fully self-contained"
   }
 }
 
@@ -590,6 +590,11 @@ FINAL CHECKS BEFORE YOU ANSWER:
 - timeStart of shot 1 is "0:00"; timeEnd of the final shot equals the total as M:SS.
 - Narration word counts obey 130 words/minute for each shot.
 - cutList length is between 2 and 8 and every screenName exists in the scraped content.
+- The videoPrompt.fullPrompt is ONGOING PROSE of at least 300 words. Spell out: the
+  visual style (gradient, palette, depth, lighting), the UI motion and camera feel
+  (e.g. "slow 4% push-in", "cursor glides, never jumps"), pacing and cut rhythm, and a
+  beat-by-beat pass through every shot in order. Long and specific is correct here \u2014
+  a one-paragraph summary is a FAILED answer.
 - No invented screens, no filler opening lines, valid JSON only.`;
   }
 });
@@ -654,6 +659,51 @@ var outputParser_exports = {};
 __export(outputParser_exports, {
   parseAndValidateOutput: () => parseAndValidateOutput
 });
+function shotRundownLines(script) {
+  const lines = ["", "SHOT-BY-SHOT RUNDOWN (match these beats in order)"];
+  (script || []).forEach((shot, index) => {
+    const number = shot.shotNumber ?? index + 1;
+    const label = shot.label || `SHOT ${number}`;
+    const beats = [];
+    if (shot.screen) beats.push(`on ${shot.screen}`);
+    if (shot.action) beats.push(String(shot.action).trim().replace(/\.$/, ""));
+    if (shot.narration) beats.push(`Voiceover: \u201C${String(shot.narration).trim()}\u201D`);
+    lines.push(
+      `${number}. ${shot.timeStart || "0:00"}\u2013${shot.timeEnd || ""} \u2014 ${label}: ${beats.join(". ")}.`
+    );
+  });
+  return lines;
+}
+function padVideoPrompt(text, script, target) {
+  const parts = [String(text).trim()];
+  const sections = [
+    shotRundownLines(script),
+    DELIVERY_NOTES,
+    PACING_CLOSER
+  ];
+  for (const section2 of sections) {
+    for (const line of section2) {
+      parts.push(line);
+      if (countWords(parts.join(" ")) >= VIDEO_PROMPT_MIN) {
+        return parts.join("\n");
+      }
+    }
+  }
+  return parts.join("\n");
+}
+function trimToWordBudget(text, budget) {
+  const sentences = String(text).match(/[^.!?]+[.!?]+\s*/g) || [String(text)];
+  const kept = [];
+  let used = 0;
+  for (const sentence of sentences) {
+    const words = countWords(sentence);
+    if (used + words > budget && kept.length) break;
+    kept.push(sentence.trim());
+    used += words;
+    if (used >= budget) break;
+  }
+  return kept.length ? kept.join(" ") : String(text).trim();
+}
 function stripFences(raw) {
   let text = String(raw ?? "").trim();
   text = text.replace(/^```(?:json|JSON)?\s*/i, "").replace(/```\s*$/, "");
@@ -774,6 +824,25 @@ function parseAndValidateOutput(rawContent) {
     warnings.push("videoPrompt.fullPrompt missing or too short \u2014 placeholder inserted.");
     parsed.videoPrompt.fullPrompt = "ERROR: the AI did not return a usable video prompt for this generation. Regenerate the script, or copy the shot list above straight into your editor.";
   }
+  const promptMissing = parsed.videoPrompt.fullPrompt.startsWith("ERROR:");
+  if (!promptMissing) {
+    const promptWords = countWords(parsed.videoPrompt.fullPrompt);
+    if (promptWords < VIDEO_PROMPT_MIN) {
+      parsed.videoPrompt.fullPrompt = padVideoPrompt(
+        parsed.videoPrompt.fullPrompt,
+        parsed.script,
+        parsed.videoPrompt.target
+      );
+      warnings.push(
+        `videoPrompt was ${promptWords} words \u2014 a shot rundown and delivery notes were appended to reach the ${VIDEO_PROMPT_MIN}-word minimum.`
+      );
+    } else if (promptWords > VIDEO_PROMPT_MAX) {
+      parsed.videoPrompt.fullPrompt = trimToWordBudget(parsed.videoPrompt.fullPrompt, VIDEO_PROMPT_MAX);
+      warnings.push(
+        `videoPrompt was ${promptWords} words \u2014 trimmed to the ${VIDEO_PROMPT_MAX}-word limit at a sentence boundary.`
+      );
+    }
+  }
   if (warnings.length) {
     console.warn("[Keyframe] Output warnings:\n" + warnings.join("\n"));
   }
@@ -785,12 +854,32 @@ function inferAppName(parsed) {
   if (firstShot && typeof firstShot.title === "string") return firstShot.title;
   return "";
 }
-var REQUIRED_KEYS, REQUIRED_SHOT_FIELDS;
+var VIDEO_PROMPT_MIN, VIDEO_PROMPT_MAX, DELIVERY_NOTES, PACING_CLOSER, REQUIRED_KEYS, REQUIRED_SHOT_FIELDS;
 var init_outputParser = __esm({
   "src/services/outputParser.js"() {
     init_errorClassifier();
     init_timing();
     init_wordCount();
+    VIDEO_PROMPT_MIN = 300;
+    VIDEO_PROMPT_MAX = 600;
+    DELIVERY_NOTES = [
+      "",
+      "DELIVERY NOTES",
+      "- Aspect: 16:9 master at 1080p; render a 9:16 vertical crop for Shorts, Reels and TikTok.",
+      "- Motion: continuous, confident moves \u2014 slow pushes and short glides, cut on action.",
+      "- Pacing: every UI change resolves before the next one begins; no dead frames.",
+      "- Legibility: keep the interface at 100% scale \u2014 never shrink the UI to fit two screens at once.",
+      "- Text: burn captions from the voiceover lines above, inside the title-safe area.",
+      "- Audio: clean voiceover over a restrained electronic bed, with quiet, audible UI clicks."
+    ];
+    PACING_CLOSER = [
+      "",
+      "Overall rhythm: open on the strongest visual moment, settle into a steady two-to-three",
+      "second cut rhythm across the feature screens, then finish on the closing beat with the app",
+      "name held on screen for a full second of silence before the cut to black. Keep every",
+      "transition in one visual language so the sequence reads as a single continuous take",
+      "rather than a stitched reel of separate clips."
+    ];
     REQUIRED_KEYS = ["meta", "script", "cutList", "videoPrompt"];
     REQUIRED_SHOT_FIELDS = [
       "shotNumber",
@@ -862,10 +951,14 @@ function hasUsableApiKey() {
   }
 }
 function trimForModel(jinaResult2, model) {
-  if (model.contextWindow >= 32e3) return jinaResult2;
+  const windowChars = Math.floor(model.contextWindow * 3);
+  const budget = Math.min(PROMPT_CHAR_BUDGET, windowChars);
+  const cleaned = String(jinaResult2.cleaned || "");
+  if (cleaned.length <= budget) return jinaResult2;
   const trimmed = {
     ...jinaResult2,
-    cleaned: String(jinaResult2.cleaned || "").slice(0, 2e4)
+    cleaned: cleaned.slice(0, budget),
+    trimmed: true
   };
   trimmed.charCount = trimmed.cleaned.length;
   trimmed.estimatedTokens = Math.ceil(trimmed.charCount / 4);
@@ -892,8 +985,10 @@ async function generateScript(appUrl, userInputs, jinaResult2, apiKey, modelId, 
         model: model.id,
         messages,
         temperature: 0.4,
-        max_tokens: 4e3,
+        max_tokens: 3e3,
+        // keeps prompt + completion inside the 8k TPM budget
         response_format: { type: "json_object" },
+        ...model.reasoningEffort ? { reasoning_effort: model.reasoningEffort } : {},
         stream: false
       }),
       signal
@@ -985,7 +1080,7 @@ async function validateApiKey(key) {
     };
   }
 }
-var GROQ_MODELS, GROQ_ENDPOINT;
+var GROQ_MODELS, GROQ_ENDPOINT, PROMPT_CHAR_BUDGET;
 var init_groq = __esm({
   "src/services/groq.js"() {
     init_errorClassifier();
@@ -993,12 +1088,13 @@ var init_groq = __esm({
     init_outputParser();
     init_storage();
     GROQ_MODELS = [
-      { id: "llama-3.3-70b-versatile", contextWindow: 128e3 },
+      { id: "openai/gpt-oss-120b", contextWindow: 131072, reasoningEffort: "low" },
       // primary
-      { id: "llama3-8b-8192", contextWindow: 8192 }
-      // fallback
+      { id: "openai/gpt-oss-20b", contextWindow: 131072, reasoningEffort: "low" }
+      // fallback on 429
     ];
     GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
+    PROMPT_CHAR_BUDGET = 14e3;
   }
 });
 
@@ -1243,15 +1339,15 @@ var e429 = new GroqError2(429, { error: { message: "Rate limit reached" } });
 var e503 = new GroqError2(503, { error: { message: "Service unavailable" } });
 var e400 = new GroqError2(400, { error: { message: "bad payload" } });
 var e500 = new GroqError2(500, {});
-check("401 \u2192 INVALID_API_KEY / OPEN_SETTINGS", e401.type === "INVALID_API_KEY" && e401.action === "OPEN_SETTINGS");
-check("429 \u2192 RATE_LIMITED / OPEN_SETTINGS", e429.type === "RATE_LIMITED" && e429.action === "OPEN_SETTINGS");
+check("401 \u2192 INVALID_API_KEY / RETRY", e401.type === "INVALID_API_KEY" && e401.action === "RETRY");
+check("429 \u2192 RATE_LIMITED / RETRY", e429.type === "RATE_LIMITED" && e429.action === "RETRY");
 check("503 \u2192 GROQ_DOWN / RETRY", e503.type === "GROQ_DOWN" && e503.action === "RETRY");
 check("400 \u2192 BAD_REQUEST / EDIT_INPUTS", e400.type === "BAD_REQUEST" && e400.action === "EDIT_INPUTS");
 check("other \u2192 UNKNOWN / RETRY", e500.type === "UNKNOWN" && e500.action === "RETRY");
-check("401 message is specific", /invalid or expired/i.test(e401.userMsg));
-check("429 message mentions Settings", /Settings/.test(e429.userMsg));
+check("401 message is specific", /rejected/i.test(e401.userMsg));
+check("429 message mentions the shared quota", /quota/i.test(e429.userMsg));
 var norm = normalizeError2(e429);
-check("normalizeError keeps type + action", norm.type === "RATE_LIMITED" && norm.action === "OPEN_SETTINGS");
+check("normalizeError keeps type + action", norm.type === "RATE_LIMITED" && norm.action === "RETRY");
 var normAbort = normalizeError2(Object.assign(new Error("aborted"), { name: "AbortError" }));
 check("AbortError normalised", normAbort.type === "ABORTED");
 section("10. Live Groq generation");

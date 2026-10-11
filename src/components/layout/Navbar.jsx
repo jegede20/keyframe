@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { History, Menu, Settings, X } from 'lucide-react';
+import { LogoLockup } from '../shared/Logo.jsx';
 
 const NAV_LINKS = [
   { href: '#how-it-works', label: 'How It Works' },
@@ -78,23 +79,7 @@ export default function Navbar({ onOpenHistory, onOpenSettings, onGetStarted, hi
             aria-label="Keyframe home"
             style={{ display: 'inline-flex', alignItems: 'center', gap: 8, marginRight: 'auto' }}
           >
-            <span
-              aria-hidden="true"
-              style={{ color: 'var(--accent-primary)', fontSize: 18, lineHeight: 1 }}
-            >
-              ▶
-            </span>
-            <span
-              style={{
-                fontFamily: 'var(--font-display)',
-                fontWeight: 700,
-                fontSize: 20,
-                letterSpacing: '-0.02em',
-                color: 'var(--text-primary)',
-              }}
-            >
-              Keyframe
-            </span>
+            <LogoLockup size={22} fontSize={20} />
           </a>
 
           {/* Center links — desktop only */}

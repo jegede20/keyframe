@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowLeft, Download, Eye, EyeOff, KeyRound, Trash2, X } from 'lucide-react';
-import { KF_KEYS, readLS, writeLS, removeLS } from '../../store/storage.js';
-import { validateApiKey } from '../../services/groq.js';
+import { ArrowLeft, Download, Trash2, X } from 'lucide-react';
 import { LENGTH_OPTIONS, TONE_OPTIONS, VIDEO_TOOL_OPTIONS } from '../../services/promptBuilder.js';
 
 function Section({ title, children }) {
@@ -41,17 +39,12 @@ function Field({ label, hint, children }) {
 
 /**
  * Section 8.6 — centered modal on desktop, full-screen on mobile.
- * Appearance · Defaults · API key (validated) · Data (export / clear all).
+ * Appearance · Defaults · Data (export / clear all).
  */
-export default function SettingsModal({ open, onClose, settings, updateSetting, onExport, onClearAllData, onToast }) {
-  const [keyDraft, setKeyDraft] = useState('');
-  const [showKey, setShowKey] = useState(false);
-  const [validating, setValidating] = useState(false);
+export default function SettingsModal({ open, onClose, settings, updateSetting, onExport, onClearAllData }) {
 
   useEffect(() => {
     if (!open) return undefined;
-    setKeyDraft(readLS(KF_KEYS.groqKey, '') || '');
-    setShowKey(false);
     const onKey = (e) => e.key === 'Escape' && onClose();
     document.addEventListener('keydown', onKey);
     const previous = document.body.style.overflow;
@@ -63,24 +56,6 @@ export default function SettingsModal({ open, onClose, settings, updateSetting, 
   }, [open, onClose]);
 
   if (!open) return null;
-
-  const saveKey = async () => {
-    const value = keyDraft.trim();
-    if (!value) {
-      removeLS(KF_KEYS.groqKey);
-      onToast?.('API key removed — Keyframe will use the built-in key.', 'info');
-      return;
-    }
-    setValidating(true);
-    const result = await validateApiKey(value);
-    setValidating(false);
-    if (result.valid) {
-      writeLS(KF_KEYS.groqKey, value);
-      onToast?.('API key saved and validated.', 'success');
-    } else {
-      onToast?.(result.error || 'That key could not be validated.', 'error');
-    }
-  };
 
   return (
     <div
@@ -204,59 +179,6 @@ export default function SettingsModal({ open, onClose, settings, updateSetting, 
             </Field>
           </Section>
 
-          <Section title="API Key">
-            <Field
-              label="Groq API Key"
-              hint="Optional. Stored only on this device. Get a free key at console.groq.com"
-            >
-              <div style={{ display: 'flex', gap: 8 }}>
-                <div style={{ position: 'relative', flex: 1 }}>
-                  <span
-                    aria-hidden="true"
-                    style={{
-                      position: 'absolute',
-                      left: 13,
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      color: 'var(--text-tertiary)',
-                    }}
-                  >
-                    <KeyRound size={16} />
-                  </span>
-                  <input
-                    type={showKey ? 'text' : 'password'}
-                    className="kf-input kf-input--with-icon"
-                    style={{ height: 44, paddingRight: 44 }}
-                    placeholder="gsk_…"
-                    value={keyDraft}
-                    onChange={(e) => setKeyDraft(e.target.value)}
-                    autoComplete="off"
-                    spellCheck="false"
-                  />
-                  <button
-                    type="button"
-                    className="kf-icon-btn kf-icon-btn--sm"
-                    style={{ position: 'absolute', right: 4, top: 4 }}
-                    onClick={() => setShowKey((v) => !v)}
-                    aria-label={showKey ? 'Hide API key' : 'Show API key'}
-                    title={showKey ? 'Hide key' : 'Show key'}
-                  >
-                    {showKey ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-                <button
-                  type="button"
-                  className="kf-btn kf-btn--primary"
-                  onClick={saveKey}
-                  disabled={validating}
-                  style={{ flexShrink: 0 }}
-                >
-                  {validating ? 'Checking…' : 'Save'}
-                </button>
-              </div>
-            </Field>
-          </Section>
-
           <Section title="Data">
             <button type="button" className="kf-btn kf-btn--secondary" onClick={onExport} style={{ justifyContent: 'flex-start' }}>
               <Download size={16} /> Export History (JSON)
@@ -270,7 +192,7 @@ export default function SettingsModal({ open, onClose, settings, updateSetting, 
               <Trash2 size={16} /> Clear All Data
             </button>
             <p className="kf-caption" style={{ color: 'var(--text-tertiary)' }}>
-              This will delete all scripts, settings, and your API key. Cannot be undone.
+              This will delete every saved script and setting. Cannot be undone.
             </p>
           </Section>
         </div>
@@ -284,7 +206,7 @@ export default function SettingsModal({ open, onClose, settings, updateSetting, 
           }}
         >
           <p className="kf-caption" style={{ color: 'var(--text-tertiary)' }}>
-            Keyframe v1.0.0 — Made with ☕ and free tiers
+            Keyframe v1.0.0 · Offline-ready
           </p>
         </footer>
       </div>

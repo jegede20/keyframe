@@ -673,7 +673,6 @@ function Shell({ settings, updateSetting, history, isOnline, pwa, appState }) {
         updateSetting={updateSetting}
         onExport={handleExport}
         onClearAllData={handleClearAllData}
-        onToast={addToast}
       />
 
       {confirm && (

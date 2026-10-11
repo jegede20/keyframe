@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ArrowRight, Link2 } from 'lucide-react';
 import { isValidUrl } from '../../services/jina.js';
+import { LogoMark } from '../shared/Logo.jsx';
 
 /** Section 8.2 — closing CTA (repeats the hero input) + footer. */
 export default function Footer({ values, onChange, onGenerate }) {
@@ -91,15 +92,15 @@ export default function Footer({ values, onChange, onGenerate }) {
         style={{
           borderTop: '1px solid var(--border-subtle)',
           background: 'var(--bg-primary)',
-          padding: '24px 20px',
-          paddingBottom: 'calc(24px + 76px)', // clears the mobile bottom bar
+          padding: '22px 20px',
+          paddingBottom: 'calc(22px + 76px)', // clears the mobile bottom bar
         }}
       >
         <div
           className="kf-container kf-footer-inner"
           style={{
             display: 'flex',
-            gap: 12,
+            gap: 10,
             alignItems: 'center',
             justifyContent: 'space-between',
             flexWrap: 'wrap',
@@ -109,28 +110,21 @@ export default function Footer({ values, onChange, onGenerate }) {
           }}
         >
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <span aria-hidden="true" style={{ color: 'var(--accent-primary)', fontWeight: 700 }}>▶</span>
+            <LogoMark size={15} />
             <strong style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-display)' }}>Keyframe</strong>
-            <span>· Built with ☕ and free tiers.</span>
+            <span>· Paste a link, shoot the demo.</span>
           </span>
 
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
-            <a
-              className="kf-link"
-              href="https://github.com/"
-              target="_blank"
-              rel="noreferrer noopener"
-              style={{ color: 'var(--text-tertiary)' }}
-            >
-              GitHub
-            </a>
-            <span>Privacy (there is none — we store nothing)</span>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 14 }}>
+            <span>No accounts</span>
+            <span aria-hidden="true">·</span>
+            <span>Nothing leaves your device</span>
           </span>
         </div>
 
         <style>{`
           @media (min-width: 768px) {
-            footer { padding-bottom: 24px !important; }
+            footer { padding-bottom: 22px !important; }
           }
         `}</style>
       </footer>

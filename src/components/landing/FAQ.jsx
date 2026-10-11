@@ -4,7 +4,7 @@ import { Minus, Plus } from 'lucide-react';
 const ITEMS = [
   {
     q: 'Is Keyframe really free?',
-    a: 'Yes. There is no account, no paywall and no trial. It runs on free API tiers and installs on your device like an app. Nothing is metered against you — the only ceiling is the shared free tier of the AI provider, which you can bypass entirely with your own Groq API key in Settings.',
+    a: 'Yes. There is no account, no paywall and no trial. It runs on free API tiers and installs on your device like an app. Nothing is metered against you — the only ceiling is the shared free tier of the AI provider, which refills every minute.',
   },
   {
     q: 'Where is my data stored?',
@@ -16,7 +16,7 @@ const ITEMS = [
   },
   {
     q: 'What AI model powers Keyframe?',
-    a: 'Groq’s llama-3.3-70b-versatile for the script, with an automatic fallback to llama3-8b-8192 if the primary model is rate-limited. Groq is fast enough that most scripts are back in under 15 seconds.',
+    a: 'Groq’s openai/gpt-oss-120b writes the script, with an automatic fallback to openai/gpt-oss-20b if the primary model is rate-limited. Most scripts come back in well under a minute.',
   },
   {
     q: 'Can I install it on my phone?',
