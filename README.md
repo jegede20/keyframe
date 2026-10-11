@@ -118,7 +118,7 @@ Three changes got it there, each verified by measurement:
 
 > One thing tried and rejected: `content-visibility: auto` on the below-fold sections. Measured against the same build it moved nothing (LCP 2.3 s either way) and broke text-based assertions, so it was removed rather than shipped on faith.
 
-Run the acceptance checks yourself with `npm run lighthouse` (see `tools/lighthouse.mjs`) after `npm run build && npm run preview`.
+Run the acceptance checks yourself with `npm run lighthouse` (see `tools/lighthouse.mjs`) after `npm run build && npm run preview` — or point it at the live site with `LH_URL=https://keyframe-nine.vercel.app/`, which measures **98 / 100 / 100 / 100** with LCP 1.93 s and CLS 0.000 (median of 3).
 
 ### Running the suites against the built bundle
 

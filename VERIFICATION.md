@@ -77,8 +77,15 @@ deployment that actually ships — `KF_BASE=https://keyframe-nine.vercel.app`:
   layout and the install-banner geometry all hold on the host, not just locally.
 * `e2e-check.py` **59/59** against the Vercel deployment (mocked Jina + Groq:
   full generation, cancel, offline path, rate limits, history round-trip).
+* `motion-audit.py` **14/14** against the Vercel deployment — the reduced-motion
+  kill-switch holds on the shipped bundle, not just locally.
 * `a11y-check.py` **0 violations at any impact**, dark and light, against the
   Vercel deployment.
+* `npm run lighthouse` against the deployment (`LH_URL=…`, median of 3):
+  **performance 98 · accessibility 100 · best-practices 100 · PWA 100**, with
+  LCP **1.93 s**, CLS **0.000** and TBT **129 ms** — every gate passes, and the
+  numbers beat the sandbox preview because the CDN is doing the serving. The
+  banner geometry assertion above is what keeps the CLS at zero.
 * `live-check.py` **11/11** against the Vercel deployment — a real `r.jina.ai`
   fetch and a real Groq generation with the bundled key, driven from a browser,
   no proxy in between. That is Rules 3, 4 and 6 proven end to end on the host.
@@ -102,8 +109,12 @@ KF_BASE=http://localhost:4173 python3 tools/e2e-check.py
 python3 tools/motion-audit.py && python3 tools/a11y-check.py
 python3 tools/pwa-check.py && npm run lighthouse
 python3 tools/live-check.py             # spends real free-tier quota
-KF_BASE=https://keyframe-nine.vercel.app python3 tools/e2e-check.py   # 59/59
-KF_BASE=https://keyframe-nine.vercel.app python3 tools/live-check.py  # 11/11
+KF_BASE=https://keyframe-nine.vercel.app python3 tools/browser-check.py  # 44/44 + 12 skips
+KF_BASE=https://keyframe-nine.vercel.app python3 tools/e2e-check.py      # 59/59
+KF_BASE=https://keyframe-nine.vercel.app python3 tools/motion-audit.py   # 14/14
+KF_BASE=https://keyframe-nine.vercel.app python3 tools/a11y-check.py     # 0 violations (dark)
+LH_URL=https://keyframe-nine.vercel.app/ npm run lighthouse              # gates pass
+KF_BASE=https://keyframe-nine.vercel.app python3 tools/live-check.py     # 11/11, real APIs
 ```
 
 ## Known limits
